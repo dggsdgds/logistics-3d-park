@@ -1086,10 +1086,12 @@
     const DETAIL_ROAD_COLUMNS = new Set([2, 3, 6, 7]);
     const DETAIL_TARGET_COLUMNS = new Set([0, 1, 4, 5]);
     const DETAIL_CROSS_ROAD_Z = 32.5;
+    const DETAIL_BLOCK_SHIFT = 3.2;
     const detailedColumnX = (column) =>
-      AISLE_HALF + CONTAINER.w / 2 + column * COL_PITCH;
+      AISLE_HALF + CONTAINER.w / 2 + column * COL_PITCH +
+      (column >= 4 ? DETAIL_BLOCK_SHIFT : 0);
     const DETAIL_ROAD_X_A = (detailedColumnX(1) + detailedColumnX(4)) / 2;
-    const DETAIL_ROAD_X_B = 28.0;
+    const DETAIL_ROAD_X_B = 31.0;
 
     /* ------------------------------------------------------------------ */
     /*  Renderer                                                           */
@@ -1646,8 +1648,8 @@
 
     for (const side of [-1, 1]) {
       for (let column = 0; column < BULK_COLS; column++) {
-        // Every fifth column becomes a north-south service road.
-        if (column % 5 === 4) continue;
+        // Two adjacent columns become a wider north-south service road.
+        if (column % 7 === 4 || column % 7 === 5) continue;
 
         const x = side * (BULK_START_X + column * COL_PITCH);
 
@@ -2200,11 +2202,45 @@
       { x: 20, z: 70, name: '东北加油站' },
       { x: -20, z: 70, name: '西北加油站' }
     ];
-    const REFUEL_RADIUS = 7.5;
+    const STATION_SCALE = 1.45;
+    const REFUEL_RADIUS = 10.5;
     const REFUEL_COST = 50;
     const REFUEL_TIME = 1.6;
     let refuelTimer = 0;
     let stationAssetReady = false;
+
+    // Solid parts of the stations: canopy columns, pump islands, shop and
+    // price-sign pole. The canopy itself remains open so a truck can drive in.
+    function addStationColliders(station) {
+      const s = STATION_SCALE;
+      const addBox = (localX, localZ, halfX, halfZ) => {
+        const x = station.x + localX * s;
+        const z = station.z + localZ * s;
+        const hx = halfX * s;
+        const hz = halfZ * s;
+        colliders.push({
+          minX: x - hx,
+          maxX: x + hx,
+          minZ: z - hz,
+          maxZ: z + hz
+        });
+      };
+
+      for (const localX of [-5.2, 5.2]) {
+        for (const localZ of [-2.4, 2.4]) {
+          addBox(localX, localZ, 0.45, 0.45);
+        }
+      }
+      addBox(0, -5.3, 2.1, 1.5);
+      for (const localX of [-2.5, 2.5]) {
+        addBox(localX, 0, 1.1, 0.5);
+      }
+      addBox(-6.8, -4.0, 0.65, 0.32);
+    }
+
+    for (const station of gasStations) {
+      addStationColliders(station);
+    }
 
     const stationMarkerGroup = new THREE.Group();
     scene.add(stationMarkerGroup);
@@ -2230,13 +2266,13 @@
 
     for (const station of gasStations) {
       const beam = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.4, 1.0, 16, 14, 1, true),
+        new THREE.CylinderGeometry(0.5, 1.4, 22, 14, 1, true),
         stationBeamMat
       );
-      beam.position.set(station.x, 8, station.z);
+      beam.position.set(station.x, 11, station.z);
 
       const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(7.2, 0.09, 8, 64),
+        new THREE.TorusGeometry(10.4, 0.12, 8, 64),
         stationRingMat
       );
       ring.rotation.x = -Math.PI / 2;
@@ -2258,6 +2294,7 @@
 
         for (const station of gasStations) {
           const model = template.clone(true);
+          model.scale.setScalar(STATION_SCALE);
           model.position.set(station.x, 0, station.z);
           scene.add(model);
         }
