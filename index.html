@@ -380,6 +380,300 @@
     height: 100%;
   }
 
+  .tms-panel {
+    position: absolute;
+    top: 18px;
+    z-index: 2;
+    padding: 8px 10px;
+    border: 1px solid rgba(90, 209, 255, 0.14);
+    background: rgba(6, 9, 12, 0.58);
+  }
+  .tms-panel.fuel {
+    left: 36px;
+    width: 192px;
+  }
+  .tms-panel.drive {
+    right: 36px;
+    width: 158px;
+    text-align: right;
+  }
+  .tms-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 8px;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: #6e7f8c;
+  }
+  .tms-panel.drive .tms-head { justify-content: flex-end; }
+  #fuelValue {
+    font-size: 13px;
+    letter-spacing: .02em;
+    color: #c9efff;
+    font-variant-numeric: tabular-nums;
+  }
+  .fuel-track {
+    height: 5px;
+    margin-top: 7px;
+    overflow: hidden;
+    border: 1px solid rgba(90, 209, 255, 0.12);
+    background: #14191e;
+  }
+  #fuelFill {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, #3fb6dd, #93e8ff);
+    transition: width .2s linear;
+  }
+  #fuelFill.low {
+    background: linear-gradient(90deg, #ff5a4d, #ffae4a);
+  }
+  #driveTimeValue {
+    margin-top: 3px;
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: .04em;
+    color: #e8f7ff;
+    font-variant-numeric: tabular-nums;
+  }
+  #driveTimeValue.danger {
+    color: #ff6b5e;
+    text-shadow: 0 0 14px rgba(255, 60, 50, 0.5);
+  }
+
+  .alert-stack {
+    position: fixed;
+    top: 74px;
+    left: 50%;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+  .alert {
+    display: none;
+    padding: 9px 16px;
+    border: 1px solid;
+    font-size: 11px;
+    letter-spacing: .08em;
+    white-space: nowrap;
+    backdrop-filter: blur(6px);
+  }
+  .alert.show { display: block; }
+  .alert-fuel {
+    color: #ffd08a;
+    border-color: rgba(255, 170, 60, 0.45);
+    background: rgba(28, 18, 6, 0.9);
+  }
+  .alert-fatigue {
+    color: #ffb3ad;
+    border-color: rgba(255, 70, 60, 0.55);
+    background: rgba(30, 5, 5, 0.92);
+  }
+  .fatigue-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    pointer-events: none;
+    opacity: 0;
+    box-shadow: inset 0 0 150px 35px rgba(255, 20, 20, 0.6);
+    transition: opacity .25s ease;
+  }
+  .fatigue-overlay.show {
+    animation: fatiguePulse 1.2s ease-in-out infinite;
+  }
+  @keyframes fatiguePulse {
+    0%, 100% { opacity: .18; }
+    50% { opacity: .95; }
+  }
+
+  .refuel-hud {
+    position: fixed;
+    left: 36px;
+    bottom: 300px;
+    z-index: 3;
+    width: 270px;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 190, 60, 0.35);
+    background: rgba(12, 10, 6, 0.86);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px);
+    transition: opacity .2s ease, transform .2s ease, visibility .2s;
+    pointer-events: none;
+  }
+  .refuel-hud.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  .refuel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    font-size: 9px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: #ffcf4a;
+  }
+  .refuel-tag { color: #ffcf4a; }
+  #refuelStation { color: #f4e3ba; }
+  #refuelStatus {
+    margin-top: 6px;
+    font-size: 11px;
+    letter-spacing: .04em;
+    color: #e8dcc2;
+  }
+  .refuel-track {
+    height: 5px;
+    margin-top: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 190, 60, 0.16);
+    background: #1b1710;
+  }
+  #refuelFill {
+    width: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #ffb52e, #ffe08a);
+    transition: width .1s linear;
+  }
+  .refuel-foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+    font-size: 8px;
+    letter-spacing: .12em;
+    color: #8d7b5a;
+  }
+
+  .warehouse-panel {
+    position: fixed;
+    left: 36px;
+    top: 50%;
+    z-index: 4;
+    width: 292px;
+    padding: 13px 15px;
+    border: 1px solid rgba(255, 190, 60, 0.34);
+    background: rgba(10, 11, 9, 0.9);
+    backdrop-filter: blur(7px);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-8px, -50%);
+    transition: opacity .2s ease, transform .2s ease, visibility .2s;
+    pointer-events: none;
+  }
+  .warehouse-panel.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(0, -50%);
+  }
+  .wh-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 190, 60, 0.14);
+    font-size: 9px;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: #ffcf4a;
+  }
+  #whArea { color: #ffe7a3; }
+  .wh-title {
+    margin-top: 10px;
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: #84939e;
+  }
+  .wh-util-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 8px;
+    font-size: 11px;
+    color: #cbd8df;
+  }
+  #whUtil {
+    font-size: 25px;
+    line-height: 1;
+    color: #eaf6fa;
+    font-variant-numeric: tabular-nums;
+  }
+  #whUtil.overload {
+    color: #ff6b5e;
+    text-shadow: 0 0 14px rgba(255, 60, 50, 0.4);
+  }
+  .wh-track {
+    height: 6px;
+    margin-top: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(90, 209, 255, 0.13);
+    background: #13181c;
+  }
+  #whFill {
+    width: 92%;
+    height: 100%;
+    background: linear-gradient(90deg, #49c7a0, #9ae6c9);
+    transition: width .45s ease, background .3s ease;
+  }
+  #whFill.overload {
+    background: linear-gradient(90deg, #ff5a4d, #ffa14a);
+  }
+  .wh-alert {
+    display: none;
+    margin-top: 9px;
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 70, 60, 0.45);
+    background: rgba(50, 8, 5, 0.75);
+    color: #ff9d93;
+    font-size: 10px;
+    letter-spacing: .06em;
+  }
+  .wh-alert.show { display: block; }
+  .wh-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  #unloadBtn {
+    flex: 1;
+    padding: 9px 10px;
+    border: 1px solid rgba(255, 207, 74, 0.65);
+    background: linear-gradient(180deg, #e4b13e, #b47d1e);
+    color: #16120a;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .18em;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  #unloadBtn:disabled {
+    opacity: .45;
+    cursor: default;
+  }
+  .wh-click {
+    font-size: 8px;
+    letter-spacing: .1em;
+    color: #8c7958;
+    white-space: nowrap;
+  }
+  .wh-hint {
+    margin-top: 8px;
+    font-size: 8px;
+    line-height: 1.5;
+    letter-spacing: .06em;
+    color: #67737c;
+  }
+
   /* mission UI */
   .mission-banner {
     position: fixed;
@@ -583,7 +877,7 @@
   <div class="mission-banner" id="missionBanner">
     <span class="mission-dot"></span>
     <span class="mission-tag">运输任务</span>
-    <span id="missionText">请驾驶卡车前往目标点提货</span>
+    <span id="missionText">请驾驶卡车前往发光标记的集装箱卸货</span>
   </div>
 
   <div class="score-card" id="scoreCard">
@@ -599,9 +893,29 @@
   <div class="mission-toast" id="missionToast">
     <span class="toast-check">✓</span>
     <div class="toast-copy">
-      <strong>提货成功，获得 100 积分</strong>
-      <span class="toast-reward">MISSION COMPLETE</span>
+      <strong id="toastTitle">卸货完成，获得 100 绩效分</strong>
+      <span class="toast-reward" id="toastSub">WAREHOUSE JOB COMPLETE</span>
     </div>
+  </div>
+
+  <div id="refuelHud" class="refuel-hud">
+    <div class="refuel-head"><span class="refuel-tag">加油站</span><span id="refuelStation">东区加油站</span></div>
+    <div id="refuelStatus">停车自动加油 · 扣除 50 积分</div>
+    <div class="refuel-track"><div id="refuelFill"></div></div>
+    <div class="refuel-foot"><span>加油成本</span><span>-50 积分</span></div>
+  </div>
+
+  <div id="warehousePanel" class="warehouse-panel">
+    <div class="wh-head"><span>仓储调度</span><span id="whArea">A-06</span></div>
+    <div class="wh-title">目标集装箱</div>
+    <div class="wh-util-row"><span>库容利用率</span><strong id="whUtil">92%</strong></div>
+    <div class="wh-track"><div id="whFill"></div></div>
+    <div id="whAlert" class="wh-alert">爆仓预警 · 建议立即卸货</div>
+    <div class="wh-actions">
+      <button id="unloadBtn" type="button">卸货</button>
+      <span class="wh-click">左键点击卸货</span>
+    </div>
+    <div class="wh-hint">靠近目标集装箱后执行入库作业</div>
   </div>
 
   <footer class="footer">
@@ -631,6 +945,16 @@
   <div class="vignette"></div>
 
   <div id="driveHud" class="drive-hud" aria-hidden="true">
+    <div class="tms-panel fuel">
+      <div class="tms-head"><span>燃油</span><span id="fuelValue">100%</span></div>
+      <div class="fuel-track"><div id="fuelFill"></div></div>
+    </div>
+
+    <div class="tms-panel drive">
+      <div class="tms-head"><span>连续驾驶</span></div>
+      <div id="driveTimeValue">00:00</div>
+    </div>
+
     <div class="speed-panel">
       <div class="speed-label">速度</div>
       <div class="speed-readout">
@@ -668,6 +992,13 @@
       </div>
     </div>
   </div>
+
+  <div id="alertStack" class="alert-stack">
+    <div id="fuelWarning" class="alert alert-fuel">油量不足，请前往加油站</div>
+    <div id="fatigueWarning" class="alert alert-fatigue">疲劳驾驶预警，请靠边停车休息</div>
+  </div>
+
+  <div id="fatigueOverlay" class="fatigue-overlay"></div>
 
   <script>
     window.__ready = false;
@@ -764,6 +1095,7 @@
 
     const MOVE_SPEED = 6.2;
     const PLAYER_RADIUS = 0.42;
+    const FATIGUE_LIMIT = 120;
 
     const colliders = [];
 
@@ -778,10 +1110,28 @@
     const steeringWheel = document.getElementById('steeringWheel');
     const missionText = document.getElementById('missionText');
     const missionToast = document.getElementById('missionToast');
+    const toastTitle = document.getElementById('toastTitle');
+    const toastSub = document.getElementById('toastSub');
     const scoreValue = document.getElementById('scoreValue');
     const scoreCard = document.getElementById('scoreCard');
     const minimapCanvas = document.getElementById('minimap');
     const minimapCtx = minimapCanvas.getContext('2d');
+    const fuelValue = document.getElementById('fuelValue');
+    const fuelFill = document.getElementById('fuelFill');
+    const driveTimeValue = document.getElementById('driveTimeValue');
+    const fuelWarning = document.getElementById('fuelWarning');
+    const fatigueWarning = document.getElementById('fatigueWarning');
+    const fatigueOverlay = document.getElementById('fatigueOverlay');
+    const refuelHud = document.getElementById('refuelHud');
+    const refuelStation = document.getElementById('refuelStation');
+    const refuelStatus = document.getElementById('refuelStatus');
+    const refuelFill = document.getElementById('refuelFill');
+    const warehousePanel = document.getElementById('warehousePanel');
+    const whArea = document.getElementById('whArea');
+    const whUtil = document.getElementById('whUtil');
+    const whFill = document.getElementById('whFill');
+    const whAlert = document.getElementById('whAlert');
+    const unloadBtn = document.getElementById('unloadBtn');
     let steeringVisual = 0;
     const WALK_HINT = footerHint.innerHTML;
     const DRIVE_HINT = '<b>↑ ↓</b> 加速/倒车 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>E</b> 下车';
@@ -1021,6 +1371,7 @@
     /*  Containers (single InstancedMesh)                                  */
     /* ------------------------------------------------------------------ */
     const rand = mulberry32(0x5eed2026);
+    const targetRand = mulberry32(0x51a7c0de);
     const palette = [
       0xb23a32, 0x1f5f8f, 0x2f7d4f, 0xd7a52a,
       0xd0642f, 0x3e6f8f, 0x8b929a, 0xd9dde1
@@ -1028,6 +1379,7 @@
     const placements = [];
     const bulkPlacements = [];
     const mapStacks = [];
+    const warehouseTargets = [];
     const color = new THREE.Color();
 
     function pushContainer(x, y, z, ry = 0) {
@@ -1063,6 +1415,19 @@
             maxZ: z + CONTAINER.l / 2
           });
           mapStacks.push({ x, z, type: 'detail' });
+
+          if (column === 0) {
+            const rowIndex = ROW_Z.indexOf(z);
+            warehouseTargets.push({
+              x,
+              z,
+              topY: height * (CONTAINER.h + 0.012),
+              side,
+              row: rowIndex,
+              area: `${side < 0 ? 'A' : 'B'}-${String(rowIndex + 1).padStart(2, '0')}`,
+              utilization: 60 + Math.floor(targetRand() * 36)
+            });
+          }
         }
       }
     }
@@ -1393,40 +1758,20 @@
     scene.add(sunSprite);
 
     /* ------------------------------------------------------------------ */
-    /*  Mission pickup beacon                                              */
+    /*  Warehouse dispatch                                                 */
     /* ------------------------------------------------------------------ */
-    const missionPoints = [
-      { x: 0, z: 44 },
-      { x: 0, z: 14 },
-      { x: 0, z: -10 },
-      { x: 0, z: -32 },
-      { x: 0, z: -54 }
-    ];
-
     let score = 0;
     let missionActive = false;
     let missionTarget = null;
     let missionPointIndex = -1;
     let missionRespawnTimer = null;
     let toastTimer = null;
+    let warehousePanelOpen = false;
+    let warehouseReady = false;
+    let warehouseCompleting = false;
+    const WAREHOUSE_RANGE = 15;
 
-    const missionRingMat = new THREE.MeshBasicMaterial({
-      color: 0xffcf4a,
-      transparent: true,
-      opacity: 0.88,
-      toneMapped: false,
-      side: THREE.DoubleSide
-    });
-    const missionGroundMat = new THREE.MeshBasicMaterial({
-      color: 0xffb52e,
-      transparent: true,
-      opacity: 0.55,
-      toneMapped: false,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-    const missionBeamMat = new THREE.MeshBasicMaterial({
+    const targetBeamMat = new THREE.MeshBasicMaterial({
       color: 0xffc63c,
       transparent: true,
       opacity: 0.12,
@@ -1436,49 +1781,84 @@
       depthWrite: false,
       fog: false
     });
+    const targetBoxMat = new THREE.LineBasicMaterial({
+      color: 0x5ad1ff,
+      transparent: true,
+      opacity: 0.9,
+      toneMapped: false
+    });
+    const targetBayMat = new THREE.LineBasicMaterial({
+      color: 0xffcf4a,
+      transparent: true,
+      opacity: 0.6,
+      toneMapped: false
+    });
+    const targetStripeMat = new THREE.MeshBasicMaterial({
+      color: 0x5ad1ff,
+      transparent: true,
+      opacity: 0.85,
+      toneMapped: false,
+      depthWrite: false
+    });
 
     const missionGroup = new THREE.Group();
-    const missionRing = new THREE.Mesh(
-      new THREE.TorusGeometry(4.0, 0.12, 10, 64),
-      missionRingMat
+    const targetBeam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.95, 22, 12, 1, true),
+      targetBeamMat
     );
-    missionRing.position.y = 4.0;
-
-    const missionGroundRing = new THREE.Mesh(
-      new THREE.TorusGeometry(4.0, 0.065, 8, 64),
-      missionGroundMat
+    const targetBox = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(CONTAINER.w + 0.06, 1, CONTAINER.l + 0.06)),
+      targetBoxMat
     );
-    missionGroundRing.rotation.x = -Math.PI / 2;
-    missionGroundRing.position.y = 0.06;
-
-    const missionBeam = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.35, 0.95, 32, 16, 1, true),
-      missionBeamMat
+    const targetStripe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 1, 0.9),
+      targetStripeMat
     );
-    missionBeam.position.y = 16;
 
-    missionGroup.add(missionRing, missionGroundRing, missionBeam);
+    const bayHalfW = 1.7;
+    const bayHalfL = 3.5;
+    const targetBay = new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-bayHalfW, 0.04, -bayHalfL),
+        new THREE.Vector3(bayHalfW, 0.04, -bayHalfL),
+        new THREE.Vector3(bayHalfW, 0.04, bayHalfL),
+        new THREE.Vector3(-bayHalfW, 0.04, bayHalfL)
+      ]),
+      targetBayMat
+    );
+
+    missionGroup.add(targetBeam, targetBox, targetBay, targetStripe);
     missionGroup.visible = false;
     scene.add(missionGroup);
 
-    function showMissionToast() {
+    function addScore(delta) {
+      score = Math.max(0, score + delta);
+      scoreValue.textContent = String(score);
+      scoreCard.classList.add('pop');
+      setTimeout(() => scoreCard.classList.remove('pop'), 360);
+    }
+
+    function showToast(title, sub = 'MISSION COMPLETE') {
+      toastTitle.textContent = title;
+      toastSub.textContent = sub;
       missionToast.classList.add('show');
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => missionToast.classList.remove('show'), 3000);
     }
 
-    function pickMissionIndex() {
+    function pickWarehouseIndex() {
       const position = activeTruck ? activeTruck.group.position : camera.position;
       const candidates = [];
 
-      missionPoints.forEach((point, index) => {
+      warehouseTargets.forEach((target, index) => {
         if (index === missionPointIndex) return;
-        if (Math.hypot(point.x - position.x, point.z - position.z) < 22) return;
+        const distance = Math.hypot(target.x - position.x, target.z - position.z);
+        if (distance < 18) return;
         candidates.push(index);
       });
 
       if (!candidates.length) {
-        missionPoints.forEach((_, index) => {
+        warehouseTargets.forEach((_, index) => {
           if (index !== missionPointIndex) candidates.push(index);
         });
       }
@@ -1486,35 +1866,281 @@
       return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
-    function spawnMission(forceIndex = null) {
-      const index = forceIndex === null ? pickMissionIndex() : forceIndex;
-      const point = missionPoints[index];
+    function renderWarehousePanel() {
+      if (!missionTarget) return;
 
-      missionPointIndex = index;
-      missionTarget = { x: point.x, z: point.z };
-      missionGroup.position.set(point.x, 0, point.z);
-      missionGroup.visible = true;
-      missionActive = true;
-      missionText.textContent = '请驾驶卡车前往目标点提货';
+      const utilization = Math.round(missionTarget.utilization);
+      const overload = utilization > 85;
+
+      whArea.textContent = missionTarget.area;
+      whUtil.textContent = `${utilization}%`;
+      whUtil.classList.toggle('overload', overload);
+      whFill.style.width = `${utilization}%`;
+      whFill.classList.toggle('overload', overload);
+      whAlert.classList.toggle('show', overload);
+      unloadBtn.disabled = !warehouseReady;
     }
 
-    function collectMission() {
-      if (!missionActive || !activeTruck) return;
+    function spawnWarehouseTarget(forceIndex = null) {
+      const index = forceIndex === null ? pickWarehouseIndex() : forceIndex;
+      const target = warehouseTargets[index];
+      if (!target) return;
+
+      missionPointIndex = index;
+      missionTarget = target;
+      missionActive = true;
+      warehouseReady = true;
+      warehouseCompleting = false;
+      warehousePanelOpen = false;
+      warehousePanel.classList.remove('show');
+      unloadBtn.disabled = false;
+
+      missionGroup.position.set(target.x, 0, target.z);
+      targetBeam.position.y = target.topY + 11;
+      targetBox.scale.y = target.topY;
+      targetBox.position.y = target.topY / 2;
+      targetBay.position.x = target.x < 0 ? 3.2 : -3.2;
+      targetStripe.scale.y = target.topY;
+      targetStripe.position.set(
+        target.x < 0 ? CONTAINER.w / 2 + 0.08 : -CONTAINER.w / 2 - 0.08,
+        target.topY / 2,
+        0
+      );
+      missionGroup.visible = true;
+
+      missionText.textContent = '请驾驶卡车前往发光标记的集装箱卸货';
+      renderWarehousePanel();
+    }
+
+    function updateWarehousePanel() {
+      if (warehouseCompleting) return;
+
+      if (!activeTruck || !missionActive || !missionTarget) {
+        if (warehousePanelOpen) {
+          warehousePanel.classList.remove('show');
+          warehousePanelOpen = false;
+        }
+        return;
+      }
+
+      const dx = activeTruck.group.position.x - missionTarget.x;
+      const dz = activeTruck.group.position.z - missionTarget.z;
+
+      if (dx * dx + dz * dz > WAREHOUSE_RANGE * WAREHOUSE_RANGE) {
+        if (warehousePanelOpen) {
+          warehousePanel.classList.remove('show');
+          warehousePanelOpen = false;
+        }
+        return;
+      }
+
+      if (!warehousePanelOpen) {
+        renderWarehousePanel();
+        warehousePanel.classList.add('show');
+        warehousePanelOpen = true;
+      }
+    }
+
+    function unloadWarehouseTarget() {
+      if (!warehouseReady || !missionActive || !missionTarget || !activeTruck || warehouseCompleting) return;
+
+      const dx = activeTruck.group.position.x - missionTarget.x;
+      const dz = activeTruck.group.position.z - missionTarget.z;
+      if (dx * dx + dz * dz > WAREHOUSE_RANGE * WAREHOUSE_RANGE) return;
+
+      warehouseReady = false;
+      warehouseCompleting = true;
+
+      const target = missionTarget;
+      target.utilization = Math.max(45, target.utilization - 20);
+      addScore(100);
+      renderWarehousePanel();
+      unloadBtn.disabled = true;
+      missionText.textContent = '卸货完成，正在分配下一个目标…';
+      showToast('卸货完成，获得 100 绩效分', 'WAREHOUSE JOB COMPLETE');
 
       missionActive = false;
       missionGroup.visible = false;
-      score += 100;
-      scoreValue.textContent = String(score);
-      scoreCard.classList.add('pop');
-      setTimeout(() => scoreCard.classList.remove('pop'), 360);
-      showMissionToast();
-      missionText.textContent = '提货成功，正在分配下一个提货点…';
 
       clearTimeout(missionRespawnTimer);
-      missionRespawnTimer = setTimeout(() => spawnMission(), 1100);
+      setTimeout(() => {
+        warehousePanel.classList.remove('show');
+        warehousePanelOpen = false;
+        warehouseCompleting = false;
+        missionRespawnTimer = setTimeout(() => spawnWarehouseTarget(), 1200);
+      }, 750);
     }
 
-    spawnMission(0);
+    unloadBtn.addEventListener('click', unloadWarehouseTarget);
+
+    // Pointer lock hides the cursor, so a left click anywhere is the in-cab
+    // equivalent of pressing the visible "卸货" button.
+    window.addEventListener('mousedown', (event) => {
+      if (event.button !== 0 || !controls.isLocked) return;
+      if (!warehousePanelOpen || !warehouseReady) return;
+      unloadWarehouseTarget();
+    });
+
+    const initialWarehouseIndex = Math.max(0, warehouseTargets.findIndex(
+      (target) => target.side === 1 && target.z > 10 && target.z < 25
+    ));
+    if (warehouseTargets[initialWarehouseIndex]) {
+      warehouseTargets[initialWarehouseIndex].utilization = 92;
+    }
+    spawnWarehouseTarget(initialWarehouseIndex);
+
+    /* ------------------------------------------------------------------ */
+    /*  Gas stations                                                       */
+    /* ------------------------------------------------------------------ */
+    const gasStations = [
+      { x: 20, z: 0, name: '东区加油站' },
+      { x: -20, z: 0, name: '西区加油站' }
+    ];
+    const REFUEL_RADIUS = 7.5;
+    const REFUEL_COST = 50;
+    const REFUEL_TIME = 1.6;
+    let refuelTimer = 0;
+    let stationAssetReady = false;
+
+    const stationMarkerGroup = new THREE.Group();
+    scene.add(stationMarkerGroup);
+
+    const stationBeamMat = new THREE.MeshBasicMaterial({
+      color: 0xffc23a,
+      transparent: true,
+      opacity: 0.07,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    });
+    const stationRingMat = new THREE.MeshBasicMaterial({
+      color: 0xffb52e,
+      transparent: true,
+      opacity: 0.55,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+
+    for (const station of gasStations) {
+      const beam = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.4, 1.0, 16, 14, 1, true),
+        stationBeamMat
+      );
+      beam.position.set(station.x, 8, station.z);
+
+      const ring = new THREE.Mesh(
+        new THREE.TorusGeometry(7.2, 0.09, 8, 64),
+        stationRingMat
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(station.x, 0.07, station.z);
+
+      stationMarkerGroup.add(beam, ring);
+    }
+
+    const stationLoader = new GLTFLoader();
+    stationLoader.load(
+      'assets/gas_station.glb',
+      (gltf) => {
+        const template = gltf.scene;
+        template.traverse((node) => {
+          if (!node.isMesh) return;
+          node.castShadow = true;
+          node.receiveShadow = true;
+        });
+
+        for (const station of gasStations) {
+          const model = template.clone(true);
+          model.position.set(station.x, 0, station.z);
+          scene.add(model);
+        }
+
+        renderer.shadowMap.needsUpdate = true;
+        stationAssetReady = true;
+        console.log('[port] Blender gas stations loaded:', gasStations.length);
+      },
+      undefined,
+      (error) => {
+        console.error('[port] Gas station asset failed', error);
+        stationAssetReady = true;
+      }
+    );
+
+    function updateGasStations(dt) {
+      if (warehousePanelOpen) {
+        refuelHud.classList.remove('show');
+        refuelTimer = 0;
+        return;
+      }
+
+      if (!activeTruck) {
+        refuelHud.classList.remove('show');
+        refuelTimer = 0;
+        return;
+      }
+
+      const truck = activeTruck;
+      let nearest = null;
+      let nearestDistance = Infinity;
+
+      for (const station of gasStations) {
+        const dx = truck.group.position.x - station.x;
+        const dz = truck.group.position.z - station.z;
+        const distance = Math.hypot(dx, dz);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearest = station;
+        }
+      }
+
+      if (!nearest || nearestDistance > REFUEL_RADIUS) {
+        refuelHud.classList.remove('show');
+        refuelTimer = 0;
+        return;
+      }
+
+      refuelHud.classList.add('show');
+      refuelStation.textContent = nearest.name;
+
+      if (truck.fuel >= 99.5) {
+        refuelStatus.textContent = '油箱已满';
+        refuelFill.style.width = '100%';
+        refuelTimer = 0;
+        return;
+      }
+
+      if (score < REFUEL_COST) {
+        refuelStatus.textContent = `积分不足 · 需要 ${REFUEL_COST} 积分`;
+        refuelFill.style.width = '0%';
+        refuelTimer = 0;
+        return;
+      }
+
+      if (Math.abs(truck.speed) > 1.2) {
+        refuelStatus.textContent = '请停稳后自动加油';
+        refuelFill.style.width = '0%';
+        refuelTimer = 0;
+        return;
+      }
+
+      refuelTimer += dt;
+      const progress = Math.min(refuelTimer / REFUEL_TIME, 1);
+      refuelFill.style.width = `${progress * 100}%`;
+      refuelStatus.textContent = '正在加油… 油量回满';
+
+      if (refuelTimer >= REFUEL_TIME) {
+        truck.fuel = 100;
+        addScore(-REFUEL_COST);
+        updateTmsHud(truck);
+        refuelTimer = 0;
+        refuelFill.style.width = '100%';
+        refuelStatus.textContent = '油箱已满';
+        showToast(`加油完成，扣除 ${REFUEL_COST} 积分`, 'FUEL REFILLED');
+      }
+    }
 
     /* ------------------------------------------------------------------ */
     /*  Performance: render the static shadow map once                     */
@@ -1723,7 +2349,7 @@
         const blobTexture = makeBlobShadowTexture();
         const spawns = [
           { x: 2.2, z: 56, heading: 0 },
-          { x: 2.2, z: 30, heading: 0 },
+          { x: -3.1, z: 30, heading: 0 },
           { x: 3.1, z: 2, heading: Math.PI }
         ];
 
@@ -1769,7 +2395,10 @@
             mount,
             wheels,
             heading: spawn.heading,
-            speed: 0
+            speed: 0,
+            fuel: 100,
+            driveTime: 0,
+            restTimer: 0
           });
         }
 
@@ -1915,6 +2544,33 @@
       }
     }
 
+    function formatDriveTime(seconds) {
+      const total = Math.max(0, Math.floor(seconds));
+      const minutes = Math.floor(total / 60);
+      const secs = total % 60;
+      return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function updateTmsHud(truck) {
+      const fuel = Math.max(0, Math.min(100, Math.round(truck.fuel)));
+      fuelValue.textContent = `${fuel}%`;
+      fuelFill.style.width = `${fuel}%`;
+      fuelFill.classList.toggle('low', fuel < 20);
+      fuelWarning.classList.toggle('show', fuel < 20);
+
+      driveTimeValue.textContent = formatDriveTime(truck.driveTime);
+      const fatigued = truck.driveTime >= FATIGUE_LIMIT;
+      driveTimeValue.classList.toggle('danger', fatigued);
+      fatigueWarning.classList.toggle('show', fatigued);
+      fatigueOverlay.classList.toggle('show', fatigued);
+    }
+
+    function clearFatigueUi() {
+      driveTimeValue.classList.remove('danger');
+      fatigueWarning.classList.remove('show');
+      fatigueOverlay.classList.remove('show');
+    }
+
     function enterTruck(truck) {
       if (!truck || activeTruck) return;
 
@@ -1922,6 +2578,8 @@
       keys.clear();
       velocity.set(0, 0, 0);
       truck.speed = 0;
+      truck.driveTime = 0;
+      truck.restTimer = 0;
 
       // The camera becomes a child of the cab mount, so mouse look stays
       // relative to the truck while it turns.
@@ -1935,6 +2593,7 @@
       speedValue.textContent = '0';
       steeringVisual = 0;
       steeringWheel.style.transform = 'rotate(0deg)';
+      updateTmsHud(truck);
       promptMode = '';
       updateInteractPrompt();
     }
@@ -1944,6 +2603,8 @@
       if (!truck) return;
 
       truck.speed = 0;
+      truck.driveTime = 0;
+      truck.restTimer = 0;
       keys.clear();
       scene.attach(camera);
 
@@ -1967,6 +2628,10 @@
 
       activeTruck = null;
       nearestTruck = null;
+      clearFatigueUi();
+      fuelWarning.classList.remove('show');
+      refuelHud.classList.remove('show');
+      refuelTimer = 0;
       footerHint.innerHTML = WALK_HINT;
       statusLabel.textContent = 'FIRST PERSON';
       document.body.classList.remove('driving');
@@ -1993,10 +2658,18 @@
       const truck = activeTruck;
       if (!truck) return;
 
+      const speedBefore = Math.abs(truck.speed);
+      truck.fuel = Math.max(0, truck.fuel - (0.08 + speedBefore * 0.06) * dt);
+      if (truck.fuel <= 0) truck.speed = 0;
+
       const throttle = (keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0);
-      if (throttle > 0) truck.speed += 5.4 * dt;
-      else if (throttle < 0) truck.speed -= 6.6 * dt;
-      else truck.speed *= Math.exp(-1.8 * dt);
+      if (truck.fuel > 0) {
+        if (throttle > 0) truck.speed += 5.4 * dt;
+        else if (throttle < 0) truck.speed -= 6.6 * dt;
+        else truck.speed *= Math.exp(-1.8 * dt);
+      } else {
+        truck.speed = 0;
+      }
 
       if (throttle === 0 && Math.abs(truck.speed) < 0.02) truck.speed = 0;
       truck.speed = THREE.MathUtils.clamp(truck.speed, -3.2, 8.0);
@@ -2036,6 +2709,15 @@
         wheel.rotation.x -= truck.speed * dt / 0.42;
       }
 
+      if (Math.abs(truck.speed) > 0.4) {
+        truck.driveTime += dt;
+        truck.restTimer = 0;
+      } else {
+        truck.restTimer += dt;
+        if (truck.restTimer >= 3) truck.driveTime = 0;
+      }
+      updateTmsHud(truck);
+
       const kmh = Math.round(Math.abs(truck.speed) * 3.6);
       if (speedValue.textContent !== String(kmh)) {
         speedValue.textContent = String(kmh);
@@ -2043,6 +2725,227 @@
 
       steeringVisual = THREE.MathUtils.damp(steeringVisual, steer * 110, 9, dt);
       steeringWheel.style.transform = `rotate(${steeringVisual.toFixed(1)}deg)`;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Navigation grid + A*                                               */
+    /* ------------------------------------------------------------------ */
+    const NAV_CELL = 2.0;
+    const NAV_COLS = Math.ceil((WORLD.maxX - WORLD.minX) / NAV_CELL);
+    const NAV_ROWS = Math.ceil((WORLD.maxZ - WORLD.minZ) / NAV_CELL);
+    const NAV_CLEARANCE = 1.1;
+    const navBlocked = new Uint8Array(NAV_COLS * NAV_ROWS);
+
+    for (const box of colliders) {
+      const minX = box.minX - NAV_CLEARANCE;
+      const maxX = box.maxX + NAV_CLEARANCE;
+      const minZ = box.minZ - NAV_CLEARANCE;
+      const maxZ = box.maxZ + NAV_CLEARANCE;
+      const gx0 = Math.max(0, Math.floor((minX - WORLD.minX) / NAV_CELL));
+      const gx1 = Math.min(NAV_COLS - 1, Math.floor((maxX - WORLD.minX) / NAV_CELL));
+      const gz0 = Math.max(0, Math.floor((minZ - WORLD.minZ) / NAV_CELL));
+      const gz1 = Math.min(NAV_ROWS - 1, Math.floor((maxZ - WORLD.minZ) / NAV_CELL));
+
+      for (let gz = gz0; gz <= gz1; gz++) {
+        const cz = WORLD.minZ + (gz + 0.5) * NAV_CELL;
+        if (cz < minZ || cz > maxZ) continue;
+        for (let gx = gx0; gx <= gx1; gx++) {
+          const cx = WORLD.minX + (gx + 0.5) * NAV_CELL;
+          if (cx < minX || cx > maxX) continue;
+          navBlocked[gz * NAV_COLS + gx] = 1;
+        }
+      }
+    }
+
+    const navCame = new Int32Array(NAV_COLS * NAV_ROWS);
+    const navG = new Float32Array(NAV_COLS * NAV_ROWS);
+    const navF = new Float32Array(NAV_COLS * NAV_ROWS);
+    const navClosed = new Uint8Array(NAV_COLS * NAV_ROWS);
+
+    function navIndex(gx, gz) {
+      return gz * NAV_COLS + gx;
+    }
+
+    function navCellCenterX(gx) {
+      return WORLD.minX + (gx + 0.5) * NAV_CELL;
+    }
+
+    function navCellCenterZ(gz) {
+      return WORLD.minZ + (gz + 0.5) * NAV_CELL;
+    }
+
+    function isNavFree(gx, gz) {
+      if (gx < 0 || gz < 0 || gx >= NAV_COLS || gz >= NAV_ROWS) return false;
+      return navBlocked[navIndex(gx, gz)] === 0;
+    }
+
+    function nearestNavCell(x, z) {
+      const gx0 = Math.max(0, Math.min(NAV_COLS - 1, Math.floor((x - WORLD.minX) / NAV_CELL)));
+      const gz0 = Math.max(0, Math.min(NAV_ROWS - 1, Math.floor((z - WORLD.minZ) / NAV_CELL)));
+      if (isNavFree(gx0, gz0)) return navIndex(gx0, gz0);
+
+      for (let radius = 1; radius <= 10; radius++) {
+        let best = -1;
+        let bestDistance = Infinity;
+        for (let gz = gz0 - radius; gz <= gz0 + radius; gz++) {
+          for (let gx = gx0 - radius; gx <= gx0 + radius; gx++) {
+            if (Math.max(Math.abs(gx - gx0), Math.abs(gz - gz0)) !== radius) continue;
+            if (!isNavFree(gx, gz)) continue;
+            const cx = navCellCenterX(gx);
+            const cz = navCellCenterZ(gz);
+            const distance = (cx - x) * (cx - x) + (cz - z) * (cz - z);
+            if (distance < bestDistance) {
+              bestDistance = distance;
+              best = navIndex(gx, gz);
+            }
+          }
+        }
+        if (best !== -1) return best;
+      }
+      return -1;
+    }
+
+    function findNavPath(startX, startZ, endX, endZ) {
+      const startCell = nearestNavCell(startX, startZ);
+      const goalCell = nearestNavCell(endX, endZ);
+      if (startCell < 0 || goalCell < 0) return [];
+
+      navG.fill(Infinity);
+      navF.fill(Infinity);
+      navCame.fill(-1);
+      navClosed.fill(0);
+
+      const goalGx = goalCell % NAV_COLS;
+      const goalGz = Math.floor(goalCell / NAV_COLS);
+      const heuristic = (gx, gz) => {
+        const dx = Math.abs(gx - goalGx);
+        const dz = Math.abs(gz - goalGz);
+        return (dx + dz) + (Math.SQRT2 - 2) * Math.min(dx, dz);
+      };
+
+      const heap = [];
+      const push = (index) => {
+        let child = heap.length;
+        heap.push(index);
+        while (child > 0) {
+          const parent = (child - 1) >> 1;
+          if (navF[heap[parent]] <= navF[heap[child]]) break;
+          [heap[parent], heap[child]] = [heap[child], heap[parent]];
+          child = parent;
+        }
+      };
+      const pop = () => {
+        const root = heap[0];
+        const last = heap.pop();
+        if (heap.length && last !== undefined) {
+          heap[0] = last;
+          let parent = 0;
+          while (true) {
+            const left = parent * 2 + 1;
+            const right = left + 1;
+            let smallest = parent;
+            if (left < heap.length && navF[heap[left]] < navF[heap[smallest]]) smallest = left;
+            if (right < heap.length && navF[heap[right]] < navF[heap[smallest]]) smallest = right;
+            if (smallest === parent) break;
+            [heap[parent], heap[smallest]] = [heap[smallest], heap[parent]];
+            parent = smallest;
+          }
+        }
+        return root;
+      };
+
+      navG[startCell] = 0;
+      navF[startCell] = heuristic(startCell % NAV_COLS, Math.floor(startCell / NAV_COLS));
+      push(startCell);
+
+      const directions = [
+        [1, 0], [-1, 0], [0, 1], [0, -1],
+        [1, 1], [1, -1], [-1, 1], [-1, -1]
+      ];
+
+      while (heap.length) {
+        const current = pop();
+        if (navClosed[current]) continue;
+        if (current === goalCell) break;
+        navClosed[current] = 1;
+
+        const gx = current % NAV_COLS;
+        const gz = Math.floor(current / NAV_COLS);
+
+        for (const [dx, dz] of directions) {
+          const nx = gx + dx;
+          const nz = gz + dz;
+          if (!isNavFree(nx, nz)) continue;
+          if (dx !== 0 && dz !== 0 && (!isNavFree(gx + dx, gz) || !isNavFree(gx, gz + dz))) continue;
+
+          const next = navIndex(nx, nz);
+          if (navClosed[next]) continue;
+          const stepCost = dx !== 0 && dz !== 0 ? Math.SQRT2 : 1;
+          const tentative = navG[current] + stepCost;
+          if (tentative >= navG[next]) continue;
+
+          navCame[next] = current;
+          navG[next] = tentative;
+          navF[next] = tentative + heuristic(nx, nz);
+          push(next);
+        }
+      }
+
+      if (goalCell !== startCell && navCame[goalCell] === -1) return [];
+
+      const cells = [];
+      let current = goalCell;
+      while (current !== -1) {
+        cells.push(current);
+        if (current === startCell) break;
+        current = navCame[current];
+      }
+      if (cells[cells.length - 1] !== startCell) return [];
+      cells.reverse();
+
+      const points = cells.map((index) => ({
+        x: navCellCenterX(index % NAV_COLS),
+        z: navCellCenterZ(Math.floor(index / NAV_COLS))
+      }));
+
+      points[0] = { x: startX, z: startZ };
+      return points;
+    }
+
+    function getWarehouseNavGoal(target) {
+      const side = target.x < 0 ? -1 : 1;
+      return { x: side * (AISLE_HALF - 2.0), z: target.z };
+    }
+
+    let currentPath = [];
+    let pathAccumulator = 0;
+    let lastPathTarget = -1;
+    let lastPathX = 0;
+    let lastPathZ = 0;
+
+    function updateMinimapPath(dt) {
+      if (!missionActive || !missionTarget) {
+        currentPath = [];
+        lastPathTarget = -1;
+        return;
+      }
+
+      const px = activeTruck ? activeTruck.group.position.x : camera.position.x;
+      const pz = activeTruck ? activeTruck.group.position.z : camera.position.z;
+      pathAccumulator += dt;
+
+      if (lastPathTarget === missionPointIndex &&
+          Math.hypot(px - lastPathX, pz - lastPathZ) < 2) {
+        return;
+      }
+      if (pathAccumulator < 0.4) return;
+
+      pathAccumulator = 0;
+      lastPathTarget = missionPointIndex;
+      lastPathX = px;
+      lastPathZ = pz;
+      const goal = getWarehouseNavGoal(missionTarget);
+      currentPath = findNavPath(px, pz, goal.x, goal.z);
     }
 
     /* ------------------------------------------------------------------ */
@@ -2125,10 +3028,65 @@
       ctx.strokeRect(x0 + 0.5, y0 + 0.5, width - 1, height - 1);
     }
 
+    function drawStationIcons(ctx) {
+      for (const station of gasStations) {
+        const x = worldToMapX(station.x);
+        const y = worldToMapY(station.z);
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(255, 207, 74, 0.7)';
+        ctx.shadowBlur = 7;
+        ctx.fillStyle = '#c23b2f';
+        ctx.fillRect(x - 6, y - 6, 12, 12);
+        ctx.restore();
+
+        ctx.strokeStyle = '#ffd35c';
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(x - 6, y - 6, 12, 12);
+
+        // A tiny fuel-pump pictogram.
+        ctx.fillStyle = '#ffd35c';
+        ctx.fillRect(x - 2.4, y - 4, 4.2, 7);
+        ctx.fillRect(x + 1.6, y - 2.6, 2.6, 1.2);
+        ctx.fillStyle = '#fff2bc';
+        ctx.fillRect(x - 1.4, y - 3, 2.2, 1.4);
+      }
+    }
+
     function drawMinimap(time) {
       const ctx = minimapCtx;
       ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
       ctx.drawImage(mapBaseCanvas, 0, 0);
+
+      // Green A* route from the player to the target container.
+      if (currentPath.length > 1) {
+        ctx.save();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(worldToMapX(currentPath[0].x), worldToMapY(currentPath[0].z));
+        for (let i = 1; i < currentPath.length; i++) {
+          ctx.lineTo(worldToMapX(currentPath[i].x), worldToMapY(currentPath[i].z));
+        }
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+        ctx.lineWidth = 8;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(worldToMapX(currentPath[0].x), worldToMapY(currentPath[0].z));
+        for (let i = 1; i < currentPath.length; i++) {
+          ctx.lineTo(worldToMapX(currentPath[i].x), worldToMapY(currentPath[i].z));
+        }
+        ctx.strokeStyle = '#63f59a';
+        ctx.lineWidth = 4.5;
+        ctx.shadowColor = '#57e389';
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      drawStationIcons(ctx);
 
       if (missionActive && missionTarget) {
         const tx = worldToMapX(missionTarget.x);
@@ -2198,11 +3156,11 @@
       if (sailingShip.position.x > 280) sailingShip.position.x = -280;
 
       if (missionActive) {
-        const ringPulse = 0.5 + 0.5 * Math.sin(elapsed * 3.2);
-        missionRing.scale.setScalar(1 + ringPulse * 0.022);
-        missionGroundRing.scale.setScalar(1 + ringPulse * 0.022);
-        missionRingMat.opacity = 0.7 + ringPulse * 0.2;
-        missionBeamMat.opacity = 0.09 + 0.05 * (0.5 + 0.5 * Math.sin(elapsed * 2.1));
+        const targetPulse = 0.5 + 0.5 * Math.sin(elapsed * 3.2);
+        targetBeamMat.opacity = 0.08 + targetPulse * 0.06;
+        targetBoxMat.opacity = 0.58 + targetPulse * 0.24;
+        targetBayMat.opacity = 0.42 + targetPulse * 0.26;
+        targetStripeMat.opacity = 0.65 + targetPulse * 0.25;
       }
 
       if (activeTruck) {
@@ -2244,23 +3202,21 @@
         }
       }
 
-      if (activeTruck && missionActive && missionTarget) {
-        const dx = activeTruck.group.position.x - missionTarget.x;
-        const dz = activeTruck.group.position.z - missionTarget.z;
-        if (dx * dx + dz * dz < 3.9 * 3.9) collectMission();
-      }
+      updateWarehousePanel();
+      updateGasStations(dt);
 
       updateInteractPrompt();
 
       minimapAccumulator += dt;
       if (minimapAccumulator >= MINIMAP_INTERVAL) {
+        updateMinimapPath(dt + minimapAccumulator);
         drawMinimap(elapsed);
         minimapAccumulator = 0;
       }
 
       renderer.render(scene, camera);
 
-      if (++frames >= 2 && containerAssetReady && bulkAssetReady && truckAssetReady && !window.__ready) {
+      if (++frames >= 2 && containerAssetReady && bulkAssetReady && truckAssetReady && stationAssetReady && !window.__ready) {
         document.getElementById('loading').classList.add('hidden');
         window.__ready = true;
       }
