@@ -1,62 +1,62 @@
 # 锦州港 · 集装箱码头 3D Demo
 
-一个完全用 Three.js（CDN 引入）程序化生成的港口集装箱码头场景，支持第一人称漫游。集装箱已从代码方块升级为 **Blender 手工建模 + 烘焙材质** 的 GLB 资产，并通过 `InstancedMesh` 批量渲染。
+一个用 Three.js + Blender 资产搭建的港口集装箱码头，第一人称漫游，可上车驾驶，港区规模约 4000 个集装箱。
 
-![码头预览](preview.png)
+![港区与卡车](preview.png)
+
+驾驶视角（车窗透明，可清楚观察路面）：
+
+![驾驶视角](preview-cab.png)
 
 ## 场景内容
 
-- 600 × 400 的深灰色混凝土码头地面，带混凝土板缝与码头岸线
-- **412 个 40ft 集装箱**，按真实尺寸 `2.44 × 2.59 × 12.19 m` 生成
-  - 左右各 8 列、每列 6 排，堆叠 2–4 层
-  - 红、蓝、绿、黄、橙、灰、白等颜色随机分配
-  - 中央留出约 **14.4 m 宽的主通道**，另有横向通道可以穿行
-- 码头岸桥（STS 龙门吊）及其吊具上的集装箱、停靠的集装箱船、海水、系缆桩
-- “锦州港 / JINZHOU PORT” 大门
-- 暖色太阳平行光 + PCFSoft 柔化阴影
-- 第一人称漫游：点击锁定鼠标、自由环视、WASD 移动
+- 约 600 × 400 的深灰色混凝土码头
+- **4060 个 40ft 集装箱**（约为上一版的 10 倍）
+  - 中央原有 412 个高精度 Blender 集装箱，8 列 × 6 排、2–4 层
+  - 两侧扩展区 3648 个低模 LOD 集装箱，27 列 × 17 排、3–5 层，形成更大的港区
+  - 中央约 14.4 m 宽主通道，横向通道可穿行
+- **3 辆 Blender 轻卡**停在主通道上
+  - 靠近时按 **E** 上车，按 **E** 下车
+  - 驾驶时 **↑ / ↓** 加速、倒车，**← / →** 转向
+  - 驾驶舱为真实开放式框架，挡风玻璃和侧窗透明，可清楚观察路面；内有仪表台和方向盘
+- 远海新增一艘**缓慢横向航行的集装箱船**（约 1.1 m/s）
+- 岸桥、停靠的集装箱船、海水、系缆桩、锦州港大门
+- 第一人称 PointerLockControls 环视
 
-## Blender 集装箱资产
+## Blender 资产
 
-参考 iBlender 集装箱建模/材质视频的题材与标准 40ft 箱结构，在 **Blender 5.2 LTS** 中重新建模：
+所有集装箱和卡车均为 Blender 5.2 LTS 原生建模，无外部付费插件：
 
-- 真实 40ft 外尺寸：12.192 × 2.438 × 2.591 m，原点在几何中心
-- 几何细节：
-  - 两侧 40 道梯形瓦楞钢板 + 前墙/门板瓦楞
-  - 8 个 ISO 角件、上下横梁、角柱
-  - 双开门 + 8 根锁杆、锁杆导座、门把手、铰链、门缝压条
-  - 侧面通风口
-- 材质：`MeshStandardMaterial`（导出为 glTF PBR），`metalness = 0.8`、`roughness = 0.6`
-- UV 展开后，在 Cycles 中烘焙了一张 **2048² 的底色调**（中性底漆 + 底部污渍/锈迹），因此每个实例可以用 `instanceColor` 独立染色
-- 五金件使用独立的深色金属材质
+- `blender/build_container.py` — 高精度 40ft 集装箱
+  - 40 道瓦楞侧板、双开门 8 根锁杆、铰链、ISO 角件、通风口
+  - 2048² 烘焙底色贴图，`metalness 0.8 / roughness 0.6`
+- `blender/build_container_lod.py` — 低模 LOD 集装箱，用于扩展区
+- `blender/build_truck.py` — 轻型厢式卡车
+  - 开放式驾驶舱框架，挡风玻璃 + 侧窗透明玻璃
+  - 4 个独立车轮节点、后视镜、灯组、货箱、仪表台、方向盘
 
-Blender 源文件：
+输出：
 
-- `blender/build_container.py` — 完整建模、UV、材质、烘焙、预览渲染、GLB 导出脚本
-- `blender/container_preview.png` — Blender 预览
-- `blender/textures/container_basecolor.png` — 烘焙出的底色贴图
-- `assets/container.glb` — 最终资产（约 1.8 MB，贴图内嵌）
+- `assets/container.glb` — 高精度集装箱
+- `assets/container_lod.glb` — 低模集装箱
+- `assets/truck.glb` — 卡车（透明车窗）
 
-## 技术实现
+## 驾驶与交互
 
-- 浏览器用 `GLTFLoader` 加载 `assets/container.glb`
-- 按材质拆成 **painted body** 和 **hardware** 两组 `InstancedMesh`，412 个实例各共享同一份几何体
-- 集装箱总面数约 11.7k 三角面/个，412 个实例共约 480 万三角面，全部由 GPU 实例化渲染
-- `instanceColor` 仅作用于车身，五金件保持深色金属
-- 阴影贴图仍只烘焙一次（4096²），水面只做纹理偏移
-- `RoomEnvironment` + `PMREMGenerator` 提供环境反射，`AmbientLight` 让暗部过渡更自然
-- 如果 GLB 加载失败，会自动回退到原来的低模箱子，不会白屏
+- 走近卡车，底部会出现 `按 E 上车`
+- 上车后视角进入驾驶室，HUD 右上角切换为 `DRIVING`，底部提示方向键操作
+- 按 **E** 下车，回到第一人称并在车侧落地
+- 驾驶时鼠标仍可自由环视（视角相对驾驶室）
+- 车辆有简单碰撞，不能穿过集装箱、岸桥腿或大门
 
 ## 性能
 
-- 集装箱主体+五金件共 **2 个 InstancedMesh / 2 次 draw call**
-- 静态阴影贴图只在启动时生成一次
-- 环境贴图只在启动时 PMREM 预计算一次
-- 在 RTX 4060 Laptop GPU 上实测流畅（Chrome/Edge 硬件 GPU，无掉帧）
-
-## 操作
-
-打开页面后点击画面进入码头：鼠标锁定并隐藏，移动鼠标环视，W/A/S/D 移动，ESC 释放鼠标。
+- 4060 个集装箱只使用 **4 个 InstancedMesh / 4 次 draw call**
+  - 高精模 2 个（车体 + 五金）
+  - LOD 模 2 个（车体 + 五金）
+- 阴影贴图仍只烘焙一次；卡车使用随车移动的 blob 阴影，不触发全场景阴影重绘
+- 低模 LOD 让 10 倍集装箱数量仍能保持流畅
+- 在 RTX 4060 Laptop GPU 的 Edge 硬件加速环境下实测约 **166 rAF/s**，无掉帧
 
 ## 运行
 
@@ -64,6 +64,26 @@ Blender 源文件：
 node server.mjs
 ```
 
-然后打开 http://127.0.0.1:5178
+打开 http://127.0.0.1:5178
 
-> Three.js 和 addons 通过 jsDelivr 的 Gcore 镜像加载，需要联网。
+> Three.js 与 addons 通过 jsDelivr 的 Gcore 镜像加载，需要联网。
+
+## 文件结构
+
+```
+index.html
+server.mjs
+assets/
+  container.glb
+  container_lod.glb
+  truck.glb
+blender/
+  build_container.py
+  build_container_lod.py
+  build_truck.py
+  container_preview.png
+  truck_preview.png
+  textures/container_basecolor.png
+preview.png
+preview-cab.png
+```

@@ -240,6 +240,50 @@
   }
   .lock-keys .label { margin-left: 4px; }
 
+  /* context action (enter / exit truck) */
+  .interact-prompt {
+    position: fixed;
+    left: 50%;
+    bottom: 86px;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border: 1px solid rgba(90, 209, 255, 0.3);
+    background: rgba(4, 9, 15, 0.74);
+    backdrop-filter: blur(6px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    font-size: 11px;
+    letter-spacing: .12em;
+    color: var(--ink);
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(-50%) translateY(6px);
+    transition: opacity .18s ease, transform .18s ease, visibility .18s;
+    pointer-events: none;
+  }
+  .interact-prompt.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+  .interact-prompt kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 23px;
+    height: 23px;
+    padding: 0 5px;
+    border: 1px solid rgba(90, 209, 255, 0.4);
+    border-radius: 3px;
+    background: rgba(90, 209, 255, 0.08);
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--cyan);
+  }
+
   #loading {
     position: fixed;
     inset: 0;
@@ -283,15 +327,19 @@
       <h1>锦州港</h1>
       <p>JINZHOU PORT · CONTAINER TERMINAL</p>
     </div>
-    <div class="status"><span class="dot"></span>FIRST PERSON</div>
+    <div class="status"><span class="dot"></span><span id="statusLabel">FIRST PERSON</span></div>
   </header>
 
   <footer class="footer">
-    <div class="hint"><b>W A S D</b> 移动 &nbsp;·&nbsp; <b>鼠标</b> 环视 &nbsp;·&nbsp; <b>ESC</b> 释放鼠标</div>
-    <div class="meta">40FT Containers <span id="containerCount">—</span><br>Instanced <span>2 DRAWS</span></div>
+    <div class="hint" id="footerHint"><b>W A S D</b> 移动 &nbsp;·&nbsp; <b>鼠标</b> 环视 &nbsp;·&nbsp; <b>ESC</b> 释放鼠标</div>
+    <div class="meta">40FT Containers <span id="containerCount">—</span><br>Instanced <span>4 DRAWS</span></div>
   </footer>
 
   <div class="crosshair"></div>
+
+  <div id="interactPrompt" class="interact-prompt">
+    <span id="interactText">按 <kbd>E</kbd> 上车</span>
+  </div>
 
   <div id="lockOverlay" class="lock-overlay">
     <div class="lock-card">
@@ -341,7 +389,7 @@
     const COLS = 8;
     const ROW_Z = [-48.5, -32.5, -16.5, 16.5, 32.5, 48.5];
     const SHIP_Z = -112;
-    const WORLD = { minX: -68, maxX: 68, minZ: -77, maxZ: 96 };
+    const WORLD = { minX: -115, maxX: 115, minZ: -77, maxZ: 205 };
 
     /* ------------------------------------------------------------------ */
     /*  Renderer                                                           */
@@ -396,6 +444,11 @@
     const right = new THREE.Vector3();
     const wish = new THREE.Vector3();
 
+    const trucks = [];
+    const hangingCraneContainers = [];
+    let activeTruck = null;
+    let nearestTruck = null;
+
     const MOVE_SPEED = 6.2;
     const PLAYER_RADIUS = 0.42;
 
@@ -404,6 +457,12 @@
     const lockOverlay = document.getElementById('lockOverlay');
     const lockTitle = lockOverlay.querySelector('h2');
     const lockNote = lockOverlay.querySelector('p');
+    const interactPrompt = document.getElementById('interactPrompt');
+    const interactText = document.getElementById('interactText');
+    const footerHint = document.getElementById('footerHint');
+    const statusLabel = document.getElementById('statusLabel');
+    const WALK_HINT = footerHint.innerHTML;
+    const DRIVE_HINT = '<b>↑ ↓</b> 加速/倒车 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>E</b> 下车';
 
     lockOverlay.addEventListener('click', () => controls.lock());
 
@@ -417,6 +476,8 @@
       document.body.classList.remove('locked');
       keys.clear();
       velocity.set(0, 0, 0);
+      if (activeTruck) activeTruck.speed = 0;
+      interactPrompt.classList.remove('visible');
     });
 
     document.addEventListener('pointerlockerror', () => {
@@ -426,6 +487,24 @@
 
     window.addEventListener('keydown', (event) => {
       if (!controls.isLocked) return;
+
+      if (event.code === 'KeyE') {
+        if (!event.repeat) {
+          event.preventDefault();
+          toggleTruck();
+        }
+        return;
+      }
+
+      if (activeTruck) {
+        if (event.code === 'ArrowUp' || event.code === 'ArrowDown' ||
+            event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
+          keys.add(event.code);
+          event.preventDefault();
+        }
+        return;
+      }
+
       if (event.code === 'KeyW' || event.code === 'KeyA' ||
           event.code === 'KeyS' || event.code === 'KeyD') {
         keys.add(event.code);
@@ -434,7 +513,10 @@
     });
 
     window.addEventListener('keyup', (event) => keys.delete(event.code));
-    window.addEventListener('blur', () => keys.clear());
+    window.addEventListener('blur', () => {
+      keys.clear();
+      if (activeTruck) activeTruck.speed = 0;
+    });
 
     function resolveSolidCollisions(position) {
       for (const box of colliders) {
@@ -675,6 +757,48 @@
       }
     }
 
+    // Bulk LOD yard: about ten times the original yard, outside the detailed
+    // two-side blocks. These use a low-poly Blender GLB but the same instancing.
+    const bulkPlacements = [];
+    const BULK_START_X = 36.5;
+    const BULK_COLS = 27;
+    const BULK_ROWS = 17;
+
+    for (const side of [-1, 1]) {
+      for (let column = 0; column < BULK_COLS; column++) {
+        const x = side * (BULK_START_X + column * COL_PITCH);
+
+        for (let row = 0; row < BULK_ROWS; row++) {
+          const z = -48.5 + row * 15.2;
+          const height = 3 + Math.floor(rand() * 3);
+          const ry = ((column + row + (side > 0 ? 1 : 0)) % 4 === 0) ? Math.PI : 0;
+
+          for (let level = 0; level < height; level++) {
+            color.setHex(palette[Math.floor(rand() * palette.length)]);
+            color.offsetHSL(
+              (rand() - 0.5) * 0.018,
+              (rand() - 0.5) * 0.12,
+              (rand() - 0.5) * 0.07
+            );
+            bulkPlacements.push({
+              x,
+              y: CONTAINER.h / 2 + level * (CONTAINER.h + 0.012),
+              z,
+              ry,
+              color: color.clone()
+            });
+          }
+
+          colliders.push({
+            minX: x - CONTAINER.w / 2,
+            maxX: x + CONTAINER.w / 2,
+            minZ: z - CONTAINER.l / 2,
+            maxZ: z + CONTAINER.l / 2
+          });
+        }
+      }
+    }
+
     const containerGeo = new THREE.BoxGeometry(CONTAINER.w, CONTAINER.h, CONTAINER.l);
     const containerTex = makeContainerTexture();
     const containerBump = makeContainerBumpTexture();
@@ -708,7 +832,7 @@
     containers.instanceColor.needsUpdate = true;
     scene.add(containers);
 
-    document.getElementById('containerCount').textContent = placements.length;
+    document.getElementById('containerCount').textContent = placements.length + bulkPlacements.length;
 
     /* ------------------------------------------------------------------ */
     /*  Quay cranes                                                        */
@@ -733,8 +857,6 @@
       roughness: 0.15,
       metalness: 0.8
     });
-
-    const hangingCraneContainers = [];
 
     function createCrane(x) {
       const group = new THREE.Group();
@@ -852,6 +974,56 @@
     scene.add(ship);
 
     /* ------------------------------------------------------------------ */
+    /*  Distant ship slowly crossing the water                             */
+    /* ------------------------------------------------------------------ */
+    const sailingShip = new THREE.Group();
+    sailingShip.position.set(-160, 0, -220);
+
+    const sailHullMat = new THREE.MeshStandardMaterial({
+      color: 0x243d50,
+      roughness: 0.62,
+      metalness: 0.35
+    });
+    const sailDeckMat = new THREE.MeshStandardMaterial({
+      color: 0x4a525a,
+      roughness: 0.8,
+      metalness: 0.2
+    });
+    const sailWhiteMat = new THREE.MeshStandardMaterial({
+      color: 0xd5dce2,
+      roughness: 0.5,
+      metalness: 0.2
+    });
+
+    function addSailingBox(w, h, d, x, y, z, material) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+      mesh.position.set(x, y, z);
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      sailingShip.add(mesh);
+      return mesh;
+    }
+
+    addSailingBox(120, 8, 20, 0, 2, 0, sailHullMat);
+    addSailingBox(120.3, 1.2, 20.3, 0, 0.1, 0, shipRedMat);
+    addSailingBox(117, 0.5, 18, 0, 6.4, 0, sailDeckMat);
+    addSailingBox(16, 13, 18, 42, 12.5, 0, sailWhiteMat);
+    addSailingBox(16.3, 2.2, 18.3, 42, 15.0, 0, shipWindowMat);
+    addSailingBox(5, 6, 6, 42, 21, 0, shipRedMat);
+
+    for (let i = 0; i < 10; i++) {
+      const containerMat = new THREE.MeshStandardMaterial({
+        color: palette[i % palette.length],
+        roughness: 0.6,
+        metalness: 0.5
+      });
+      addSailingBox(12, 2.55, 2.4, -48 + i * 9.2, 7.95, 4.2, containerMat);
+      addSailingBox(12, 2.55, 2.4, -48 + i * 9.2, 7.95, -4.2, containerMat);
+    }
+
+    scene.add(sailingShip);
+
+    /* ------------------------------------------------------------------ */
     /*  Terminal gate sign                                                 */
     /* ------------------------------------------------------------------ */
     const gateMat = new THREE.MeshStandardMaterial({
@@ -905,6 +1077,8 @@
     /*  Blender container asset (body + hardware, instanced)               */
     /* ------------------------------------------------------------------ */
     let containerAssetReady = false;
+    let bulkAssetReady = false;
+    let truckAssetReady = false;
 
     (async () => {
       try {
@@ -1010,6 +1184,330 @@
     })();
 
     /* ------------------------------------------------------------------ */
+    /*  LOD yard (10x containers, low-poly Blender asset)                  */
+    /* ------------------------------------------------------------------ */
+    (async () => {
+      try {
+        const gltf = await new GLTFLoader().loadAsync('assets/container_lod.glb');
+        gltf.scene.updateMatrixWorld(true);
+
+        const parts = [];
+        gltf.scene.traverse((node) => {
+          if (!node.isMesh) return;
+          const material = Array.isArray(node.material) ? node.material[0] : node.material;
+          const isHardware = /hardware/i.test(material?.name || '') || /hardware/i.test(node.name);
+          const geometry = node.geometry.clone();
+          geometry.applyMatrix4(node.matrixWorld);
+          parts.push({ geometry, material, isHardware });
+        });
+
+        const matrixDummy = new THREE.Object3D();
+
+        for (const part of parts) {
+          const material = part.material.clone();
+          material.side = THREE.FrontSide;
+          material.envMapIntensity = 0.9;
+          material.needsUpdate = true;
+
+          if (!part.isHardware) {
+            material.color.setHex(0xffffff);
+            material.metalness = 0.8;
+            material.roughness = 0.6;
+          }
+
+          const mesh = new THREE.InstancedMesh(part.geometry, material, bulkPlacements.length);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.frustumCulled = false;
+          mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
+          bulkPlacements.forEach((item, index) => {
+            matrixDummy.position.set(item.x, item.y, item.z);
+            matrixDummy.rotation.set(0, item.ry, 0);
+            matrixDummy.updateMatrix();
+            mesh.setMatrixAt(index, matrixDummy.matrix);
+            if (!part.isHardware) mesh.setColorAt(index, item.color);
+          });
+
+          mesh.instanceMatrix.needsUpdate = true;
+          if (!part.isHardware) mesh.instanceColor.needsUpdate = true;
+          scene.add(mesh);
+        }
+
+        renderer.shadowMap.needsUpdate = true;
+        console.log(`[port] LOD yard loaded: ${bulkPlacements.length} instances`);
+      } catch (error) {
+        console.warn('[port] LOD container asset failed to load.', error);
+      } finally {
+        bulkAssetReady = true;
+      }
+    })();
+
+    /* ------------------------------------------------------------------ */
+    /*  Blender trucks + driving                                           */
+    /* ------------------------------------------------------------------ */
+    (async () => {
+      try {
+        const gltf = await new GLTFLoader().loadAsync('assets/truck.glb');
+        const template = gltf.scene;
+
+        // Make the cab glazing obviously transparent and keep it out of the
+        // static shadow map; a soft blob shadow follows each truck instead.
+        template.traverse((node) => {
+          if (!node.isMesh) return;
+          const materials = Array.isArray(node.material) ? node.material : [node.material];
+          for (const material of materials) {
+            material.side = THREE.FrontSide;
+            material.envMapIntensity = 1.0;
+            if (/glass/i.test(material.name || '')) {
+              material.transparent = true;
+              material.opacity = 0.16;
+              material.depthWrite = false;
+              material.color.setHex(0xbfe6ff);
+              material.roughness = 0.05;
+              material.metalness = 0.0;
+            }
+            material.needsUpdate = true;
+          }
+        });
+
+        const blobTexture = makeBlobShadowTexture();
+        const spawns = [
+          { x: 2.2, z: 56, heading: 0 },
+          { x: -3.1, z: 30, heading: 0 },
+          { x: 3.1, z: 2, heading: Math.PI }
+        ];
+
+        for (const spawn of spawns) {
+          const group = new THREE.Group();
+          const model = template.clone(true);
+          model.traverse((node) => {
+            if (node.isMesh) {
+              node.castShadow = false;
+              node.receiveShadow = false;
+            }
+          });
+          group.add(model);
+          group.position.set(spawn.x, 0.02, spawn.z);
+          group.rotation.y = spawn.heading;
+
+          const mount = new THREE.Group();
+          mount.position.set(-0.4, 2.0, -1.5);
+          group.add(mount);
+
+          const blob = new THREE.Mesh(
+            new THREE.PlaneGeometry(6.2, 2.9),
+            new THREE.MeshBasicMaterial({
+              map: blobTexture,
+              transparent: true,
+              opacity: 0.5,
+              depthWrite: false,
+              toneMapped: false
+            })
+          );
+          blob.rotation.x = -Math.PI / 2;
+          blob.position.y = 0.015;
+          group.add(blob);
+
+          const wheels = [];
+          model.traverse((node) => {
+            if (/^Wheel/i.test(node.name)) wheels.push(node);
+          });
+
+          scene.add(group);
+          trucks.push({
+            group,
+            mount,
+            wheels,
+            heading: spawn.heading,
+            speed: 0
+          });
+        }
+
+        console.log(`[port] Blender trucks loaded: ${trucks.length}, transparent glazing`);
+      } catch (error) {
+        console.warn('[port] Truck asset failed to load.', error);
+      } finally {
+        truckAssetReady = true;
+      }
+    })();
+
+    let promptMode = '';
+
+    function getNearestTruck() {
+      let best = null;
+      let bestDistance = 5.5;
+      for (const truck of trucks) {
+        const dx = camera.position.x - truck.group.position.x;
+        const dz = camera.position.z - truck.group.position.z;
+        const distance = Math.hypot(dx, dz);
+        if (distance < bestDistance) {
+          best = truck;
+          bestDistance = distance;
+        }
+      }
+      return best;
+    }
+
+    function pointBlocked(x, z, radius) {
+      for (const box of colliders) {
+        if (x > box.minX - radius && x < box.maxX + radius &&
+            z > box.minZ - radius && z < box.maxZ + radius) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    function truckBlocked(x, z, heading) {
+      for (const offset of [-2.0, 0, 2.0]) {
+        const px = x - Math.sin(heading) * offset;
+        const pz = z - Math.cos(heading) * offset;
+        if (pointBlocked(px, pz, 0.95)) return true;
+      }
+      return false;
+    }
+
+    function setPromptMode(mode) {
+      if (mode === promptMode) return;
+      promptMode = mode;
+      if (mode === 'drive') {
+        interactText.innerHTML = '方向键驾驶 &nbsp;·&nbsp; 按 <kbd>E</kbd> 下车';
+      } else if (mode === 'enter') {
+        interactText.innerHTML = '按 <kbd>E</kbd> 上车';
+      }
+    }
+
+    function updateInteractPrompt() {
+      if (!controls.isLocked) {
+        interactPrompt.classList.remove('visible');
+        return;
+      }
+
+      if (activeTruck) {
+        setPromptMode('drive');
+        interactPrompt.classList.add('visible');
+        return;
+      }
+
+      nearestTruck = getNearestTruck();
+      if (nearestTruck) {
+        setPromptMode('enter');
+        interactPrompt.classList.add('visible');
+      } else {
+        interactPrompt.classList.remove('visible');
+      }
+    }
+
+    function enterTruck(truck) {
+      if (!truck || activeTruck) return;
+
+      activeTruck = truck;
+      keys.clear();
+      velocity.set(0, 0, 0);
+      truck.speed = 0;
+
+      // The camera becomes a child of the cab mount, so mouse look stays
+      // relative to the truck while it turns.
+      truck.mount.add(camera);
+      camera.position.set(0, 0, 0);
+      camera.rotation.set(0, 0, 0);
+
+      footerHint.innerHTML = DRIVE_HINT;
+      statusLabel.textContent = 'DRIVING';
+      promptMode = '';
+      updateInteractPrompt();
+    }
+
+    function exitTruck() {
+      const truck = activeTruck;
+      if (!truck) return;
+
+      truck.speed = 0;
+      keys.clear();
+      scene.attach(camera);
+
+      const heading = truck.heading;
+      const sideX = -Math.cos(heading);
+      const sideZ = Math.sin(heading);
+      let px = truck.group.position.x + sideX * 2.9;
+      let pz = truck.group.position.z + sideZ * 2.9;
+
+      if (pointBlocked(px, pz, 0.5)) {
+        px = truck.group.position.x - sideX * 2.9;
+        pz = truck.group.position.z - sideZ * 2.9;
+      }
+      if (pointBlocked(px, pz, 0.5)) {
+        px = truck.group.position.x + Math.sin(heading) * 3.4;
+        pz = truck.group.position.z + Math.cos(heading) * 3.4;
+      }
+
+      camera.position.set(px, EYE_HEIGHT, pz);
+      camera.rotation.set(0, heading, 0);
+
+      activeTruck = null;
+      nearestTruck = null;
+      footerHint.innerHTML = WALK_HINT;
+      statusLabel.textContent = 'FIRST PERSON';
+      promptMode = '';
+      updateInteractPrompt();
+    }
+
+    function toggleTruck() {
+      if (!controls.isLocked) return;
+
+      if (activeTruck) {
+        exitTruck();
+        return;
+      }
+
+      const truck = getNearestTruck();
+      if (truck) enterTruck(truck);
+    }
+
+    function updateActiveTruck(dt) {
+      const truck = activeTruck;
+      if (!truck) return;
+
+      const throttle = (keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0);
+      if (throttle > 0) truck.speed += 5.4 * dt;
+      else if (throttle < 0) truck.speed -= 6.6 * dt;
+      else truck.speed *= Math.exp(-1.8 * dt);
+
+      if (throttle === 0 && Math.abs(truck.speed) < 0.02) truck.speed = 0;
+      truck.speed = THREE.MathUtils.clamp(truck.speed, -3.2, 8.0);
+
+      const steer = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
+      if (Math.abs(truck.speed) > 0.05) {
+        const speedFactor = Math.min(Math.abs(truck.speed) / 2, 1);
+        truck.heading += steer * 1.18 * dt * speedFactor * (truck.speed >= 0 ? 1 : -1);
+      }
+
+      const forwardX = -Math.sin(truck.heading);
+      const forwardZ = -Math.cos(truck.heading);
+      const nextX = truck.group.position.x + forwardX * truck.speed * dt;
+      const nextZ = truck.group.position.z + forwardZ * truck.speed * dt;
+
+      const margin = 2.5;
+      const outside =
+        nextX < WORLD.minX + margin || nextX > WORLD.maxX - margin ||
+        nextZ < WORLD.minZ + margin || nextZ > WORLD.maxZ - margin;
+
+      if (outside || truckBlocked(nextX, nextZ, truck.heading)) {
+        truck.speed = 0;
+      } else {
+        truck.group.position.x = nextX;
+        truck.group.position.z = nextZ;
+      }
+
+      truck.group.rotation.y = truck.heading;
+
+      for (const wheel of truck.wheels) {
+        wheel.rotation.x -= truck.speed * dt / 0.42;
+      }
+    }
+
+    /* ------------------------------------------------------------------ */
     /*  Animation                                                          */
     /* ------------------------------------------------------------------ */
     const clock = new THREE.Clock();
@@ -1023,34 +1521,43 @@
       waterTexture.offset.x = elapsed * 0.0022;
       waterTexture.offset.y = elapsed * 0.0011;
 
-      // First-person movement: horizontal only, relative to camera yaw.
-      const yaw = camera.rotation.y;
-      forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
-      right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+      sailingShip.position.x += dt * 1.1;
+      if (sailingShip.position.x > 280) sailingShip.position.x = -280;
 
-      wish.set(0, 0, 0);
-      if (controls.isLocked) {
-        const moveForward = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
-        const moveRight = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
-        wish.addScaledVector(forward, moveForward);
-        wish.addScaledVector(right, moveRight);
-        if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(MOVE_SPEED);
+      if (activeTruck) {
+        updateActiveTruck(dt);
+      } else {
+        // First-person movement: horizontal only, relative to camera yaw.
+        const yaw = camera.rotation.y;
+        forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+        right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+
+        wish.set(0, 0, 0);
+        if (controls.isLocked) {
+          const moveForward = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
+          const moveRight = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
+          wish.addScaledVector(forward, moveForward);
+          wish.addScaledVector(right, moveRight);
+          if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(MOVE_SPEED);
+        }
+
+        velocity.x = THREE.MathUtils.damp(velocity.x, wish.x, 12, dt);
+        velocity.z = THREE.MathUtils.damp(velocity.z, wish.z, 12, dt);
+
+        camera.position.x += velocity.x * dt;
+        camera.position.z += velocity.z * dt;
+        camera.position.y = EYE_HEIGHT;
+
+        resolveSolidCollisions(camera.position);
+        camera.position.x = THREE.MathUtils.clamp(camera.position.x, WORLD.minX, WORLD.maxX);
+        camera.position.z = THREE.MathUtils.clamp(camera.position.z, WORLD.minZ, WORLD.maxZ);
       }
 
-      velocity.x = THREE.MathUtils.damp(velocity.x, wish.x, 12, dt);
-      velocity.z = THREE.MathUtils.damp(velocity.z, wish.z, 12, dt);
-
-      camera.position.x += velocity.x * dt;
-      camera.position.z += velocity.z * dt;
-      camera.position.y = EYE_HEIGHT;
-
-      resolveSolidCollisions(camera.position);
-      camera.position.x = THREE.MathUtils.clamp(camera.position.x, WORLD.minX, WORLD.maxX);
-      camera.position.z = THREE.MathUtils.clamp(camera.position.z, WORLD.minZ, WORLD.maxZ);
+      updateInteractPrompt();
 
       renderer.render(scene, camera);
 
-      if (++frames >= 2 && containerAssetReady && !window.__ready) {
+      if (++frames >= 2 && containerAssetReady && bulkAssetReady && truckAssetReady && !window.__ready) {
         document.getElementById('loading').classList.add('hidden');
         window.__ready = true;
       }
@@ -1253,6 +1760,23 @@
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(10, 10);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = anisotropy;
+      return tex;
+    }
+
+    function makeBlobShadowTexture() {
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createRadialGradient(128, 128, 8, 128, 128, 122);
+      grad.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
+      grad.addColorStop(0.55, 'rgba(0, 0, 0, 0.28)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+      const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = anisotropy;
       return tex;
