@@ -111,6 +111,132 @@
   }
   .meta span { color: var(--cyan); }
 
+  /* first-person reticle */
+  .crosshair {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    z-index: 4;
+    width: 18px;
+    height: 18px;
+    margin: -9px 0 0 -9px;
+    border: 1px solid rgba(232, 246, 255, 0.42);
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .2s ease;
+  }
+  .crosshair::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 4px;
+    height: 4px;
+    margin: -2px 0 0 -2px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px rgba(90, 209, 255, 0.9);
+  }
+  body.locked .crosshair { opacity: 1; }
+
+  /* click-to-lock entry screen */
+  .lock-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background:
+      radial-gradient(circle at 50% 46%, rgba(10, 22, 34, 0.28), rgba(2, 5, 9, 0.82));
+    backdrop-filter: blur(3px);
+    cursor: pointer;
+    transition: opacity .25s ease;
+  }
+  .lock-overlay.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .lock-card {
+    position: relative;
+    padding: 40px 56px 34px;
+    text-align: center;
+    border: 1px solid rgba(90, 209, 255, 0.28);
+    background: linear-gradient(180deg, rgba(8, 16, 25, 0.9), rgba(4, 9, 15, 0.94));
+    box-shadow: 0 34px 90px rgba(0, 0, 0, 0.65), inset 0 0 50px rgba(90, 209, 255, 0.04);
+  }
+  .lock-card::before,
+  .lock-card::after {
+    content: "";
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--cyan);
+    opacity: .75;
+  }
+  .lock-card::before {
+    left: -1px;
+    top: -1px;
+    border-right: 0;
+    border-bottom: 0;
+  }
+  .lock-card::after {
+    right: -1px;
+    bottom: -1px;
+    border-left: 0;
+    border-top: 0;
+  }
+  .lock-kicker {
+    margin-bottom: 14px;
+    font-size: 10px;
+    letter-spacing: .34em;
+    text-transform: uppercase;
+    color: var(--cyan);
+  }
+  .lock-card h2 {
+    margin: 0;
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 600;
+    letter-spacing: .14em;
+  }
+  .lock-card p {
+    margin: 12px 0 26px;
+    font-size: 12px;
+    letter-spacing: .12em;
+    color: var(--muted);
+  }
+  .lock-keys {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 7px;
+    font-size: 10px;
+    letter-spacing: .14em;
+    color: var(--muted);
+  }
+  .lock-keys .sep {
+    width: 1px;
+    height: 18px;
+    margin: 0 10px;
+    background: rgba(140, 160, 179, 0.25);
+  }
+  .lock-keys kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    height: 27px;
+    border: 1px solid rgba(140, 160, 179, 0.38);
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.04);
+    font-family: inherit;
+    font-size: 11px;
+    color: var(--ink);
+  }
+  .lock-keys .label { margin-left: 4px; }
+
   #loading {
     position: fixed;
     inset: 0;
@@ -140,6 +266,8 @@
     .hud, .footer { padding: 20px 20px; }
     .meta { display: none; }
     .brand p { display: none; }
+    .lock-card { padding: 30px 26px 26px; }
+    .lock-card h2 { font-size: 22px; }
   }
 </style>
 </head>
@@ -152,13 +280,28 @@
       <h1>物流园区</h1>
       <p>WAREHOUSE · ROAD · DELIVERY LOOP</p>
     </div>
-    <div class="status"><span class="dot"></span>LIVE RENDER</div>
+    <div class="status"><span class="dot"></span>FIRST PERSON</div>
   </header>
 
   <footer class="footer">
-    <div class="hint"><b>拖拽</b> 旋转视角 &nbsp;·&nbsp; <b>滚轮</b> 缩放</div>
-    <div class="meta">Sunlight <span>ON</span><br>Soft Shadows <span>ON</span></div>
+    <div class="hint"><b>W A S D</b> 移动 &nbsp;·&nbsp; <b>鼠标</b> 环视 &nbsp;·&nbsp; <b>ESC</b> 释放鼠标</div>
+    <div class="meta">Pointer Lock <span>ON</span><br>Eye Height <span>1.7 M</span></div>
   </footer>
+
+  <div class="crosshair"></div>
+
+  <div id="lockOverlay" class="lock-overlay">
+    <div class="lock-card">
+      <div class="lock-kicker">First Person / Pointer Lock</div>
+      <h2>点击进入园区</h2>
+      <p>鼠标将被锁定并隐藏 &nbsp;·&nbsp; 按 ESC 释放</p>
+      <div class="lock-keys">
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><span class="label">移动</span>
+        <span class="sep"></span>
+        <span class="label">鼠标环视</span>
+      </div>
+    </div>
+  </div>
 
   <div class="vignette"></div>
 
@@ -176,15 +319,17 @@
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      "three": "https://gcore.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+      "three/addons/": "https://gcore.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
     }
   }
   </script>
 
   <script type="module">
     import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    const EYE_HEIGHT = 1.7;
 
     /* ------------------------------------------------------------------ */
     /*  Renderer                                                           */
@@ -211,24 +356,98 @@
     scene.fog = new THREE.Fog(0x101c28, 68, 150);
 
     const camera = new THREE.PerspectiveCamera(
-      42,
+      70,
       window.innerWidth / window.innerHeight,
       0.1,
       600
     );
-    camera.position.set(19, 14, 23);
+    camera.rotation.order = 'YXZ';
+    camera.position.set(17, EYE_HEIGHT, 21);
+    camera.lookAt(0, 3.3, 0);
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(1.5, 2.4, 0);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.07;
-    controls.enablePan = false;
-    controls.minDistance = 9;
-    controls.maxDistance = 55;
-    controls.maxPolarAngle = Math.PI * 0.485;
-    controls.rotateSpeed = 0.55;
-    controls.zoomSpeed = 0.8;
-    controls.update();
+    /* ------------------------------------------------------------------ */
+    /*  First-person controls                                              */
+    /* ------------------------------------------------------------------ */
+    const controls = new PointerLockControls(camera, renderer.domElement);
+
+    const keys = new Set();
+    const velocity = new THREE.Vector3();
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const wish = new THREE.Vector3();
+
+    const MOVE_SPEED = 6.2;
+    const PLAYER_RADIUS = 0.42;
+    const WORLD_LIMIT = 30;
+
+    // Axis-aligned footprints the player cannot walk through.
+    const SOLID_BOXES = [
+      { minX: -4.2, maxX: 5.85, minZ: -4.2, maxZ: 4.2 },   // warehouse + dock
+      { minX: -9.4, maxX: -7.0, minZ: -9.2, maxZ: -3.2 },  // container rows
+      { minX: -9.4, maxX: -7.0, minZ: -1.7, maxZ: 4.3 },
+      { minX: -9.4, maxX: -7.0, minZ: 5.8, maxZ: 11.8 }
+    ];
+
+    const lockOverlay = document.getElementById('lockOverlay');
+    const lockTitle = lockOverlay.querySelector('h2');
+    const lockNote = lockOverlay.querySelector('p');
+
+    lockOverlay.addEventListener('click', () => controls.lock());
+
+    controls.addEventListener('lock', () => {
+      lockOverlay.classList.add('hidden');
+      document.body.classList.add('locked');
+    });
+
+    controls.addEventListener('unlock', () => {
+      lockOverlay.classList.remove('hidden');
+      document.body.classList.remove('locked');
+      keys.clear();
+      velocity.set(0, 0, 0);
+    });
+
+    document.addEventListener('pointerlockerror', () => {
+      lockTitle.textContent = '鼠标锁定失败';
+      lockNote.textContent = '请再次点击页面，或检查浏览器的鼠标锁定权限';
+    });
+
+    window.addEventListener('keydown', (event) => {
+      if (!controls.isLocked) return;
+      if (event.code === 'KeyW' || event.code === 'KeyA' ||
+          event.code === 'KeyS' || event.code === 'KeyD') {
+        keys.add(event.code);
+        event.preventDefault();
+      }
+    });
+
+    window.addEventListener('keyup', (event) => {
+      keys.delete(event.code);
+    });
+
+    window.addEventListener('blur', () => keys.clear());
+
+    function resolveSolidCollisions(position) {
+      for (const box of SOLID_BOXES) {
+        const minX = box.minX - PLAYER_RADIUS;
+        const maxX = box.maxX + PLAYER_RADIUS;
+        const minZ = box.minZ - PLAYER_RADIUS;
+        const maxZ = box.maxZ + PLAYER_RADIUS;
+
+        if (position.x <= minX || position.x >= maxX ||
+            position.z <= minZ || position.z >= maxZ) continue;
+
+        const pushLeft = position.x - minX;
+        const pushRight = maxX - position.x;
+        const pushNear = position.z - minZ;
+        const pushFar = maxZ - position.z;
+        const smallest = Math.min(pushLeft, pushRight, pushNear, pushFar);
+
+        if (smallest === pushLeft) position.x = minX;
+        else if (smallest === pushRight) position.x = maxX;
+        else if (smallest === pushNear) position.z = minZ;
+        else position.z = maxZ;
+      }
+    }
 
     /* ------------------------------------------------------------------ */
     /*  Lights                                                             */
@@ -266,7 +485,8 @@
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(160, 160),
       new THREE.MeshStandardMaterial({
-        color: 0x1a212a,
+        map: makeGridTexture(),
+        color: 0xffffff,
         roughness: 0.95,
         metalness: 0.08
       })
@@ -274,14 +494,6 @@
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
-
-    const grid = new THREE.GridHelper(160, 80, 0x93b3d0, 0x455a70);
-    grid.position.y = 0.03;
-    grid.material.transparent = true;
-    grid.material.opacity = 1;
-    grid.material.toneMapped = false;
-    grid.material.depthWrite = false;
-    scene.add(grid);
 
     /* ------------------------------------------------------------------ */
     /*  Road                                                               */
@@ -596,17 +808,40 @@
       const omega = 0.6;
       const phase = elapsed * omega;
       const z = Math.sin(phase) * 13;
-      const velocity = Math.cos(phase) * 13 * omega;
+      const truckSpeed = Math.cos(phase) * 13 * omega;
 
       truck.position.z = z;
-      const targetYaw = velocity >= 0 ? 0 : Math.PI;
+      const targetYaw = truckSpeed >= 0 ? 0 : Math.PI;
       truck.rotation.y = THREE.MathUtils.damp(truck.rotation.y, targetYaw, 9, dt);
 
       const dz = z - truckPath.prevZ;
       for (const wheel of wheels) wheel.rotation.x += dz / 0.36;
       truckPath.prevZ = z;
 
-      controls.update();
+      // First-person movement: horizontal only, relative to the camera yaw.
+      const yaw = camera.rotation.y;
+      forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+      right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+
+      wish.set(0, 0, 0);
+      if (controls.isLocked) {
+        const moveForward = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
+        const moveRight = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
+        wish.addScaledVector(forward, moveForward);
+        wish.addScaledVector(right, moveRight);
+        if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(MOVE_SPEED);
+      }
+
+      velocity.x = THREE.MathUtils.damp(velocity.x, wish.x, 12, dt);
+      velocity.z = THREE.MathUtils.damp(velocity.z, wish.z, 12, dt);
+
+      camera.position.x += velocity.x * dt;
+      camera.position.z += velocity.z * dt;
+      camera.position.y = EYE_HEIGHT;
+      resolveSolidCollisions(camera.position);
+      camera.position.x = THREE.MathUtils.clamp(camera.position.x, -WORLD_LIMIT, WORLD_LIMIT);
+      camera.position.z = THREE.MathUtils.clamp(camera.position.z, -WORLD_LIMIT, WORLD_LIMIT);
+
       renderer.render(scene, camera);
 
       if (++frames === 2) {
@@ -628,6 +863,28 @@
     /* ------------------------------------------------------------------ */
     /*  Procedural textures                                                */
     /* ------------------------------------------------------------------ */
+    function makeGridTexture() {
+      const size = 256;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+
+      ctx.fillStyle = '#1b222b';
+      ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = '#41566b';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(1.5, 1.5, size - 3, size - 3);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(80, 80);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = anisotropy;
+      return tex;
+    }
+
     function makeSkyTexture() {
       const c = document.createElement('canvas');
       c.width = 16;
