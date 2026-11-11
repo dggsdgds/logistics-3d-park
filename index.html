@@ -1412,7 +1412,7 @@
         const blobTexture = makeBlobShadowTexture();
         const spawns = [
           { x: 2.2, z: 56, heading: 0 },
-          { x: -3.1, z: 30, heading: 0 },
+          { x: 2.2, z: 30, heading: 0 },
           { x: 3.1, z: 2, heading: Math.PI }
         ];
 
@@ -1506,6 +1506,73 @@
       return false;
     }
 
+    // Oriented 2D boxes around the trucks. The model is 5.6 x 2.0 m;
+    // half extents include a small safety margin.
+    const TRUCK_HALF_LENGTH = 2.9;
+    const TRUCK_HALF_WIDTH = 1.05;
+
+    function obbOverlap(ax, az, ah, bx, bz, bh) {
+      const afx = -Math.sin(ah);
+      const afz = -Math.cos(ah);
+      const arx = Math.cos(ah);
+      const arz = -Math.sin(ah);
+      const bfx = -Math.sin(bh);
+      const bfz = -Math.cos(bh);
+      const brx = Math.cos(bh);
+      const brz = -Math.sin(bh);
+      const dx = bx - ax;
+      const dz = bz - az;
+
+      const axes = [
+        [afx, afz],
+        [arx, arz],
+        [bfx, bfz],
+        [brx, brz]
+      ];
+
+      for (const [nx, nz] of axes) {
+        const distance = Math.abs(dx * nx + dz * nz);
+        const radiusA =
+          TRUCK_HALF_LENGTH * Math.abs(nx * afx + nz * afz) +
+          TRUCK_HALF_WIDTH * Math.abs(nx * arx + nz * arz);
+        const radiusB =
+          TRUCK_HALF_LENGTH * Math.abs(nx * bfx + nz * bfz) +
+          TRUCK_HALF_WIDTH * Math.abs(nx * brx + nz * brz);
+        if (distance > radiusA + radiusB) return false;
+      }
+      return true;
+    }
+
+    function hitsOtherTruck(x, z, heading, self) {
+      for (const truck of trucks) {
+        if (truck === self) continue;
+        if (obbOverlap(
+          x, z, heading,
+          truck.group.position.x, truck.group.position.z, truck.heading
+        )) return true;
+      }
+      return false;
+    }
+
+    function pointInTruck(x, z, radius) {
+      for (const truck of trucks) {
+        const dx = x - truck.group.position.x;
+        const dz = z - truck.group.position.z;
+        const heading = truck.heading;
+        const fx = -Math.sin(heading);
+        const fz = -Math.cos(heading);
+        const rx = Math.cos(heading);
+        const rz = -Math.sin(heading);
+        const localForward = dx * fx + dz * fz;
+        const localRight = dx * rx + dz * rz;
+        if (Math.abs(localForward) < TRUCK_HALF_LENGTH + radius &&
+            Math.abs(localRight) < TRUCK_HALF_WIDTH + radius) {
+          return true;
+        }
+      }
+      return false;
+    }
+
     function setPromptMode(mode) {
       if (mode === promptMode) return;
       promptMode = mode;
@@ -1575,13 +1642,13 @@
       let px = truck.group.position.x + sideX * 2.9;
       let pz = truck.group.position.z + sideZ * 2.9;
 
-      if (pointBlocked(px, pz, 0.5)) {
+      if (pointBlocked(px, pz, 0.5) || pointInTruck(px, pz, 0.5)) {
         px = truck.group.position.x - sideX * 2.9;
         pz = truck.group.position.z - sideZ * 2.9;
       }
-      if (pointBlocked(px, pz, 0.5)) {
-        px = truck.group.position.x + Math.sin(heading) * 3.4;
-        pz = truck.group.position.z + Math.cos(heading) * 3.4;
+      if (pointBlocked(px, pz, 0.5) || pointInTruck(px, pz, 0.5)) {
+        px = truck.group.position.x + Math.sin(heading) * 4.0;
+        pz = truck.group.position.z + Math.cos(heading) * 4.0;
       }
 
       camera.position.set(px, EYE_HEIGHT, pz);
@@ -1624,13 +1691,15 @@
       truck.speed = THREE.MathUtils.clamp(truck.speed, -3.2, 8.0);
 
       const steer = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
+      const oldHeading = truck.heading;
+      let nextHeading = oldHeading;
       if (Math.abs(truck.speed) > 0.05) {
         const speedFactor = Math.min(Math.abs(truck.speed) / 2, 1);
-        truck.heading += steer * 1.18 * dt * speedFactor * (truck.speed >= 0 ? 1 : -1);
+        nextHeading += steer * 1.18 * dt * speedFactor * (truck.speed >= 0 ? 1 : -1);
       }
 
-      const forwardX = -Math.sin(truck.heading);
-      const forwardZ = -Math.cos(truck.heading);
+      const forwardX = -Math.sin(nextHeading);
+      const forwardZ = -Math.cos(nextHeading);
       const nextX = truck.group.position.x + forwardX * truck.speed * dt;
       const nextZ = truck.group.position.z + forwardZ * truck.speed * dt;
 
@@ -1639,9 +1708,13 @@
         nextX < WORLD.minX + margin || nextX > WORLD.maxX - margin ||
         nextZ < WORLD.minZ + margin || nextZ > WORLD.maxZ - margin;
 
-      if (outside || truckBlocked(nextX, nextZ, truck.heading)) {
+      if (outside ||
+          truckBlocked(nextX, nextZ, nextHeading) ||
+          hitsOtherTruck(nextX, nextZ, nextHeading, truck)) {
         truck.speed = 0;
+        truck.heading = oldHeading;
       } else {
+        truck.heading = nextHeading;
         truck.group.position.x = nextX;
         truck.group.position.z = nextZ;
       }
@@ -1698,6 +1771,9 @@
         velocity.x = THREE.MathUtils.damp(velocity.x, wish.x, 12, dt);
         velocity.z = THREE.MathUtils.damp(velocity.z, wish.z, 12, dt);
 
+        const previousX = camera.position.x;
+        const previousZ = camera.position.z;
+
         camera.position.x += velocity.x * dt;
         camera.position.z += velocity.z * dt;
         camera.position.y = EYE_HEIGHT;
@@ -1705,6 +1781,13 @@
         resolveSolidCollisions(camera.position);
         camera.position.x = THREE.MathUtils.clamp(camera.position.x, WORLD.minX, WORLD.maxX);
         camera.position.z = THREE.MathUtils.clamp(camera.position.z, WORLD.minZ, WORLD.maxZ);
+
+        if (pointInTruck(camera.position.x, camera.position.z, PLAYER_RADIUS)) {
+          camera.position.x = previousX;
+          camera.position.z = previousZ;
+          velocity.x = 0;
+          velocity.z = 0;
+        }
       }
 
       updateInteractPrompt();
