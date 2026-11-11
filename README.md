@@ -117,6 +117,14 @@
 - `blender/build_gas_station.py` — 低模加油站（参考低多边形加油站建模思路，全部程序化几何）
 - 输出：`assets/container.glb`、`assets/container_lod.glb`、`assets/truck.glb`、`assets/gas_station.glb`
 
+## 在线访问
+
+GitHub Pages 静态部署：
+
+**https://dggsdgds.github.io/logistics-3d-park/**
+
+> Pages 上直接打开 `index.html`，`assets/` 使用相对路径加载；Three.js 仍从 jsDelivr 加载，需要联网。`server.mjs` 只用于本地开发。
+
 ## 运行
 
 ```bash
