@@ -1086,12 +1086,15 @@
     const DETAIL_ROAD_COLUMNS = new Set([2, 3, 6, 7]);
     const DETAIL_TARGET_COLUMNS = new Set([0, 1, 4, 5]);
     const DETAIL_CROSS_ROAD_Z = 32.5;
-    const DETAIL_BLOCK_SHIFT = 3.2;
+    const DETAIL_BLOCK_SHIFT = 12.2;
+    const BULK_START_X = 55.0;
+    const BULK_COLS = 21;
+    const BULK_ROWS = 17;
     const detailedColumnX = (column) =>
       AISLE_HALF + CONTAINER.w / 2 + column * COL_PITCH +
       (column >= 4 ? DETAIL_BLOCK_SHIFT : 0);
     const DETAIL_ROAD_X_A = (detailedColumnX(1) + detailedColumnX(4)) / 2;
-    const DETAIL_ROAD_X_B = 31.0;
+    const DETAIL_ROAD_X_B = (detailedColumnX(5) + BULK_START_X) / 2;
 
     /* ------------------------------------------------------------------ */
     /*  Renderer                                                           */
@@ -1603,11 +1606,10 @@
 
           if (DETAIL_TARGET_COLUMNS.has(column)) {
             const rowIndex = ROW_Z.indexOf(z);
-            const accessRoad =
-              column === 0 ? AISLE_HALF - 2.0 :
-              (column === 1 || column === 4) ? DETAIL_ROAD_X_A :
-              DETAIL_ROAD_X_B;
-            const accessX = side * accessRoad;
+            const accessDir =
+              column === 0 ? -side :
+              (column === 1 || column === 5) ? side : -side;
+            const accessX = x + accessDir * (CONTAINER.w / 2 + 2.0);
 
             warehouseTargets.push({
               x,
@@ -1618,7 +1620,7 @@
               area: `${side < 0 ? 'A' : 'B'}-${String(rowIndex + 1).padStart(2, '0')}`,
               utilization: 60 + Math.floor(targetRand() * 36),
               accessX,
-              accessDir: Math.sign(accessX - x)
+              accessDir
             });
           }
         }
@@ -1640,16 +1642,11 @@
       }
     }
 
-    // Bulk LOD yard: about ten times the original yard, outside the detailed
-    // two-side blocks. These use a low-poly Blender GLB but the same instancing.
-    const BULK_START_X = 36.5;
-    const BULK_COLS = 27;
-    const BULK_ROWS = 17;
-
+    // Bulk LOD yard: outside the wide detailed-yard roads.
     for (const side of [-1, 1]) {
       for (let column = 0; column < BULK_COLS; column++) {
-        // Two adjacent columns become a wider north-south service road.
-        if (column % 7 === 4 || column % 7 === 5) continue;
+        // Four adjacent columns become a wide north-south service road.
+        if (column % 9 >= 4 && column % 9 <= 7) continue;
 
         const x = side * (BULK_START_X + column * COL_PITCH);
 
