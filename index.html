@@ -1035,6 +1035,17 @@
     const SHIP_Z = -112;
     const WORLD = { minX: -115, maxX: 115, minZ: -77, maxZ: 205 };
 
+    // The detailed yard is split into four container blocks. Two parallel
+    // north-south roads are cut through each side, plus a wide east-west
+    // cross road at z = 32.5.
+    const DETAIL_ROAD_COLUMNS = new Set([2, 3, 6, 7]);
+    const DETAIL_TARGET_COLUMNS = new Set([0, 1, 4, 5]);
+    const DETAIL_CROSS_ROAD_Z = 32.5;
+    const detailedColumnX = (column) =>
+      AISLE_HALF + CONTAINER.w / 2 + column * COL_PITCH;
+    const DETAIL_ROAD_X_A = (detailedColumnX(1) + detailedColumnX(4)) / 2;
+    const DETAIL_ROAD_X_B = 28.0;
+
     /* ------------------------------------------------------------------ */
     /*  Renderer                                                           */
     /* ------------------------------------------------------------------ */
@@ -1367,6 +1378,15 @@
     addPaint(58, 0.16, 0, -10.6, paintYellow);
     addPaint(58, 0.16, 0, 10.6, paintYellow);
 
+    // Parallel service roads between the detailed container blocks.
+    for (const roadX of [-DETAIL_ROAD_X_B, -DETAIL_ROAD_X_A, DETAIL_ROAD_X_A, DETAIL_ROAD_X_B]) {
+      addPaint(0.12, 110, roadX, 0, paintWhite);
+    }
+
+    // Wide east-west cross road through the detailed yard.
+    addPaint(68, 0.16, 0, DETAIL_CROSS_ROAD_Z - 3.0, paintYellow);
+    addPaint(68, 0.16, 0, DETAIL_CROSS_ROAD_Z + 3.0, paintYellow);
+
     /* ------------------------------------------------------------------ */
     /*  Containers (single InstancedMesh)                                  */
     /* ------------------------------------------------------------------ */
@@ -1392,12 +1412,17 @@
       placements.push({ x, y, z, ry, color: color.clone() });
     }
 
-    // Yard stacks: 8 columns per side, 6 rows deep, 2-4 containers high.
+    // Yard stacks: six columns per side after two road corridors are cut out,
+    // five rows deep, with a wide cross road at z = 32.5.
     for (const side of [-1, 1]) {
       for (let column = 0; column < COLS; column++) {
-        const x = side * (AISLE_HALF + CONTAINER.w / 2 + column * COL_PITCH);
+        if (DETAIL_ROAD_COLUMNS.has(column)) continue;
+
+        const x = side * detailedColumnX(column);
 
         for (const z of ROW_Z) {
+          if (z === DETAIL_CROSS_ROAD_Z) continue;
+
           const height = 2 + Math.floor(rand() * 3);
 
           for (let level = 0; level < height; level++) {
@@ -1416,8 +1441,14 @@
           });
           mapStacks.push({ x, z, type: 'detail' });
 
-          if (column === 0) {
+          if (DETAIL_TARGET_COLUMNS.has(column)) {
             const rowIndex = ROW_Z.indexOf(z);
+            const accessRoad =
+              column === 0 ? AISLE_HALF - 2.0 :
+              (column === 1 || column === 4) ? DETAIL_ROAD_X_A :
+              DETAIL_ROAD_X_B;
+            const accessX = side * accessRoad;
+
             warehouseTargets.push({
               x,
               z,
@@ -1425,7 +1456,9 @@
               side,
               row: rowIndex,
               area: `${side < 0 ? 'A' : 'B'}-${String(rowIndex + 1).padStart(2, '0')}`,
-              utilization: 60 + Math.floor(targetRand() * 36)
+              utilization: 60 + Math.floor(targetRand() * 36),
+              accessX,
+              accessDir: Math.sign(accessX - x)
             });
           }
         }
@@ -1455,9 +1488,15 @@
 
     for (const side of [-1, 1]) {
       for (let column = 0; column < BULK_COLS; column++) {
+        // Every fifth column becomes a north-south service road.
+        if (column % 5 === 4) continue;
+
         const x = side * (BULK_START_X + column * COL_PITCH);
 
         for (let row = 0; row < BULK_ROWS; row++) {
+          // Every sixth row becomes an east-west service road.
+          if (row % 6 === 5) continue;
+
           const z = -48.5 + row * 15.2;
           const height = 3 + Math.floor(rand() * 3);
           const ry = ((column + row + (side > 0 ? 1 : 0)) % 4 === 0) ? Math.PI : 0;
@@ -1899,10 +1938,10 @@
       targetBeam.position.y = target.topY + 11;
       targetBox.scale.y = target.topY;
       targetBox.position.y = target.topY / 2;
-      targetBay.position.x = target.x < 0 ? 3.2 : -3.2;
+      targetBay.position.x = target.accessX - target.x;
       targetStripe.scale.y = target.topY;
       targetStripe.position.set(
-        target.x < 0 ? CONTAINER.w / 2 + 0.08 : -CONTAINER.w / 2 - 0.08,
+        target.accessDir * (CONTAINER.w / 2 + 0.08),
         target.topY / 2,
         0
       );
@@ -1981,9 +2020,14 @@
       unloadWarehouseTarget();
     });
 
-    const initialWarehouseIndex = Math.max(0, warehouseTargets.findIndex(
-      (target) => target.side === 1 && target.z > 10 && target.z < 25
-    ));
+    const initialCandidates = [];
+    warehouseTargets.forEach((target, index) => {
+      const distance = Math.hypot(target.x, target.z - 64);
+      if (distance > 25) initialCandidates.push(index);
+    });
+    const initialWarehouseIndex = initialCandidates.length
+      ? initialCandidates[Math.floor(Math.random() * initialCandidates.length)]
+      : Math.floor(Math.random() * warehouseTargets.length);
     if (warehouseTargets[initialWarehouseIndex]) {
       warehouseTargets[initialWarehouseIndex].utilization = 92;
     }
@@ -1994,7 +2038,9 @@
     /* ------------------------------------------------------------------ */
     const gasStations = [
       { x: 20, z: 0, name: '东区加油站' },
-      { x: -20, z: 0, name: '西区加油站' }
+      { x: -20, z: 0, name: '西区加油站' },
+      { x: 20, z: 70, name: '东北加油站' },
+      { x: -20, z: 70, name: '西北加油站' }
     ];
     const REFUEL_RADIUS = 7.5;
     const REFUEL_COST = 50;
@@ -2913,8 +2959,7 @@
     }
 
     function getWarehouseNavGoal(target) {
-      const side = target.x < 0 ? -1 : 1;
-      return { x: side * (AISLE_HALF - 2.0), z: target.z };
+      return { x: target.accessX, z: target.z };
     }
 
     let currentPath = [];
@@ -3008,6 +3053,22 @@
         worldToMapY(-10.6),
         60 * MAP_SCALE,
         21.2 * MAP_SCALE
+      );
+
+      // Parallel north-south roads and the wide z = 32.5 cross road.
+      for (const roadX of [-DETAIL_ROAD_X_B, -DETAIL_ROAD_X_A, DETAIL_ROAD_X_A, DETAIL_ROAD_X_B]) {
+        ctx.fillRect(
+          worldToMapX(roadX - 1.6),
+          worldToMapY(-55),
+          3.2 * MAP_SCALE,
+          110 * MAP_SCALE
+        );
+      }
+      ctx.fillRect(
+        worldToMapX(-35),
+        worldToMapY(DETAIL_CROSS_ROAD_Z - 10),
+        70 * MAP_SCALE,
+        20 * MAP_SCALE
       );
 
       const stackWidth = CONTAINER.w * MAP_SCALE;
