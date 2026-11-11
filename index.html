@@ -68,6 +68,8 @@
     align-items: center;
     gap: 9px;
     padding-top: 4px;
+    flex-shrink: 0;
+    white-space: nowrap;
     font-size: 10px;
     letter-spacing: .24em;
     color: var(--muted);
@@ -103,6 +105,7 @@
   }
   .meta {
     text-align: right;
+    white-space: nowrap;
     font-size: 9px;
     line-height: 2;
     letter-spacing: .22em;
@@ -285,7 +288,7 @@
 
   <footer class="footer">
     <div class="hint"><b>W A S D</b> 移动 &nbsp;·&nbsp; <b>鼠标</b> 环视 &nbsp;·&nbsp; <b>ESC</b> 释放鼠标</div>
-    <div class="meta">40FT Containers <span id="containerCount">—</span><br>Instanced <span>1 DRAW</span></div>
+    <div class="meta">40FT Containers <span id="containerCount">—</span><br>Instanced <span>2 DRAWS</span></div>
   </footer>
 
   <div class="crosshair"></div>
@@ -313,7 +316,7 @@
         el.classList.add('error');
         el.textContent = 'Three.js 加载失败 · 请检查网络后刷新';
       }
-    }, 15000);
+    }, 30000);
   </script>
 
   <script type="importmap">
@@ -329,6 +332,7 @@
     import * as THREE from 'three';
     import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     const EYE_HEIGHT = 1.7;
     const CONTAINER = { w: 2.44, h: 2.59, l: 12.19 };
@@ -730,6 +734,8 @@
       metalness: 0.8
     });
 
+    const hangingCraneContainers = [];
+
     function createCrane(x) {
       const group = new THREE.Group();
       group.position.set(x, 0, -62);
@@ -775,13 +781,15 @@
       }
       addBox(3.0, 0.45, 12.6, 0, 16.2, -35, craneDark);
 
+      const hangingColor = x === 0 ? 0xc96a2b : 0x2f7d4f;
       const hangingMat = containerMat.clone();
-      hangingMat.color.setHex(x === 0 ? 0xc96a2b : 0x2f7d4f);
+      hangingMat.color.setHex(hangingColor);
       const hanging = new THREE.Mesh(containerGeo, hangingMat);
       hanging.position.set(0, 14.55, -35);
       hanging.castShadow = true;
       hanging.receiveShadow = true;
       group.add(hanging);
+      hangingCraneContainers.push({ mesh: hanging, color: hangingColor });
 
       return group;
     }
@@ -894,6 +902,114 @@
     renderer.shadowMap.needsUpdate = true;
 
     /* ------------------------------------------------------------------ */
+    /*  Blender container asset (body + hardware, instanced)               */
+    /* ------------------------------------------------------------------ */
+    let containerAssetReady = false;
+
+    (async () => {
+      try {
+        const gltf = await new GLTFLoader().loadAsync('assets/container.glb');
+        gltf.scene.updateMatrixWorld(true);
+
+        const bodyParts = [];
+        const hardwareParts = [];
+
+        gltf.scene.traverse((node) => {
+          if (!node.isMesh) return;
+          const material = Array.isArray(node.material) ? node.material[0] : node.material;
+          const materialName = material?.name || '';
+          const isHardware = /hardware/i.test(materialName) || /hardware/i.test(node.name);
+
+          const geometry = node.geometry.clone();
+          geometry.applyMatrix4(node.matrixWorld);
+
+          if (isHardware) hardwareParts.push({ geometry, material });
+          else bodyParts.push({ geometry, material });
+        });
+
+        if (!bodyParts.length) throw new Error('GLB has no painted container body');
+
+        const matrixDummy = new THREE.Object3D();
+        const makeInstances = (part, isBody) => {
+          const material = part.material.clone();
+          material.side = THREE.FrontSide;
+          material.envMapIntensity = isBody ? 1.25 : 1.0;
+          material.needsUpdate = true;
+
+          if (isBody) {
+            material.color.setHex(0xffffff);
+            material.metalness = 0.8;
+            material.roughness = 0.6;
+          }
+
+          const mesh = new THREE.InstancedMesh(part.geometry, material, placements.length);
+          mesh.castShadow = true;
+          mesh.receiveShadow = true;
+          mesh.frustumCulled = false;
+          mesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+
+          placements.forEach((item, index) => {
+            matrixDummy.position.set(item.x, item.y, item.z);
+            matrixDummy.rotation.set(0, item.ry + Math.PI, 0);
+            matrixDummy.updateMatrix();
+            mesh.setMatrixAt(index, matrixDummy.matrix);
+            if (isBody) mesh.setColorAt(index, item.color);
+          });
+
+          mesh.instanceMatrix.needsUpdate = true;
+          if (isBody) mesh.instanceColor.needsUpdate = true;
+          scene.add(mesh);
+          return mesh;
+        };
+
+        bodyParts.forEach((part) => makeInstances(part, true));
+        hardwareParts.forEach((part) => makeInstances(part, false));
+
+        // Use the detailed model for the two containers hanging from the cranes.
+        const bodyTemplate = bodyParts[0];
+        const hardwareTemplate = hardwareParts[0] || null;
+        for (const item of hangingCraneContainers) {
+          const old = item.mesh;
+          const parent = old.parent;
+          const group = new THREE.Group();
+          group.position.copy(old.position);
+
+          const bodyMesh = new THREE.Mesh(bodyTemplate.geometry, bodyTemplate.material.clone());
+          bodyMesh.material.side = THREE.FrontSide;
+          bodyMesh.material.color.setHex(item.color);
+          bodyMesh.material.envMapIntensity = 1.25;
+          bodyMesh.castShadow = true;
+          bodyMesh.receiveShadow = true;
+          group.add(bodyMesh);
+
+          if (hardwareTemplate) {
+            const hardwareMesh = new THREE.Mesh(hardwareTemplate.geometry, hardwareTemplate.material.clone());
+            hardwareMesh.material.side = THREE.FrontSide;
+            hardwareMesh.castShadow = true;
+            hardwareMesh.receiveShadow = true;
+            group.add(hardwareMesh);
+          }
+
+          parent.remove(old);
+          parent.add(group);
+        }
+
+        // The fallback boxes are only used while the GLB is loading.
+        scene.remove(containers);
+        renderer.shadowMap.needsUpdate = true;
+
+        console.log(
+          `[port] Blender container loaded: ${bodyParts.length} body mesh(es), ` +
+          `${hardwareParts.length} hardware mesh(es), ${placements.length} instances`
+        );
+      } catch (error) {
+        console.warn('[port] Blender container failed to load; keeping fallback boxes.', error);
+      } finally {
+        containerAssetReady = true;
+      }
+    })();
+
+    /* ------------------------------------------------------------------ */
     /*  Animation                                                          */
     /* ------------------------------------------------------------------ */
     const clock = new THREE.Clock();
@@ -934,7 +1050,7 @@
 
       renderer.render(scene, camera);
 
-      if (++frames === 2) {
+      if (++frames >= 2 && containerAssetReady && !window.__ready) {
         document.getElementById('loading').classList.add('hidden');
         window.__ready = true;
       }
