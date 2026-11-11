@@ -242,6 +242,23 @@
   }
   .lock-keys .label { margin-left: 4px; }
 
+  .fallback-btn {
+    margin-top: 18px;
+    padding: 7px 12px;
+    border: 1px solid rgba(140, 160, 179, 0.28);
+    background: rgba(255, 255, 255, 0.025);
+    color: #8d9ead;
+    font-family: inherit;
+    font-size: 9px;
+    letter-spacing: .12em;
+    cursor: pointer;
+    transition: color .2s ease, border-color .2s ease;
+  }
+  .fallback-btn:hover {
+    color: var(--cyan);
+    border-color: rgba(90, 209, 255, 0.45);
+  }
+
   /* context action (enter / exit truck) */
   .interact-prompt {
     position: fixed;
@@ -267,6 +284,31 @@
     pointer-events: none;
   }
   .interact-prompt.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .input-hint {
+    position: fixed;
+    left: 50%;
+    bottom: 330px;
+    z-index: 4;
+    padding: 8px 14px;
+    border: 1px solid rgba(90, 209, 255, 0.36);
+    background: rgba(4, 9, 15, 0.84);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    color: #b9ecff;
+    font-size: 10px;
+    letter-spacing: .1em;
+    white-space: nowrap;
+    transform: translateX(-50%) translateY(6px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .25s ease, transform .25s ease, visibility .25s;
+    pointer-events: none;
+  }
+  .input-hint.show {
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
@@ -929,6 +971,8 @@
     <span id="interactText">按 <kbd>E</kbd> 上车</span>
   </div>
 
+  <div id="inputHint" class="input-hint">兼容模式 · 按住左键拖拽环视</div>
+
   <div id="lockOverlay" class="lock-overlay">
     <div class="lock-card">
       <div class="lock-kicker">Jinzhou Port / Pointer Lock</div>
@@ -939,6 +983,7 @@
         <span class="sep"></span>
         <span class="label">鼠标环视</span>
       </div>
+      <button id="fallbackBtn" class="fallback-btn" type="button">鼠标无法锁定？使用拖拽视角</button>
     </div>
   </div>
 
@@ -1113,6 +1158,8 @@
     const lockOverlay = document.getElementById('lockOverlay');
     const lockTitle = lockOverlay.querySelector('h2');
     const lockNote = lockOverlay.querySelector('p');
+    const fallbackBtn = document.getElementById('fallbackBtn');
+    const inputHint = document.getElementById('inputHint');
     const interactPrompt = document.getElementById('interactPrompt');
     const interactText = document.getElementById('interactText');
     const footerHint = document.getElementById('footerHint');
@@ -1147,14 +1194,77 @@
     const WALK_HINT = footerHint.innerHTML;
     const DRIVE_HINT = '<b>↑ ↓</b> 加速/倒车 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>E</b> 下车';
 
-    lockOverlay.addEventListener('click', () => controls.lock());
+    let fallbackMode = false;
+    let lockAttemptTimer = null;
+    let inputHintTimer = null;
+    let dragPointerId = null;
+    let dragLastX = 0;
+    let dragLastY = 0;
+    const dragEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+    const canvasElement = renderer.domElement;
+
+    function inputActive() {
+      return controls.isLocked || fallbackMode;
+    }
+
+    function showInputHint() {
+      inputHint.classList.add('show');
+      clearTimeout(inputHintTimer);
+      inputHintTimer = setTimeout(() => inputHint.classList.remove('show'), 7000);
+    }
+
+    function enableFallback() {
+      if (controls.isLocked) return;
+      fallbackMode = true;
+      clearTimeout(lockAttemptTimer);
+      lockOverlay.classList.add('hidden');
+      document.body.classList.add('locked');
+      canvasElement.style.cursor = 'grab';
+      showInputHint();
+    }
+
+    function enterScene() {
+      if (controls.isLocked || fallbackMode) return;
+
+      clearTimeout(lockAttemptTimer);
+      lockAttemptTimer = setTimeout(() => {
+        if (!controls.isLocked && !fallbackMode) enableFallback();
+      }, 1200);
+
+      if (!canvasElement.requestPointerLock) {
+        enableFallback();
+        return;
+      }
+
+      try {
+        const result = canvasElement.requestPointerLock();
+        if (result && typeof result.catch === 'function') {
+          result.catch(() => enableFallback());
+        }
+      } catch (error) {
+        enableFallback();
+      }
+    }
+
+    lockOverlay.addEventListener('click', enterScene);
+
+    fallbackBtn.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      enableFallback();
+    });
 
     controls.addEventListener('lock', () => {
+      fallbackMode = false;
+      clearTimeout(lockAttemptTimer);
+      inputHint.classList.remove('show');
+      canvasElement.style.cursor = '';
       lockOverlay.classList.add('hidden');
       document.body.classList.add('locked');
     });
 
     controls.addEventListener('unlock', () => {
+      if (fallbackMode) return;
       lockOverlay.classList.remove('hidden');
       document.body.classList.remove('locked');
       keys.clear();
@@ -1164,12 +1274,60 @@
     });
 
     document.addEventListener('pointerlockerror', () => {
-      lockTitle.textContent = '鼠标锁定失败';
-      lockNote.textContent = '请再次点击页面，或检查浏览器的鼠标锁定权限';
+      enableFallback();
     });
 
+    // Fallback for embedded browsers / policies that reject Pointer Lock.
+    // Pointer Lock is still the primary mode; drag-look keeps the demo usable.
+    canvasElement.addEventListener('pointerdown', (event) => {
+      if (!fallbackMode || event.button !== 0) return;
+
+      dragPointerId = event.pointerId;
+      dragLastX = event.clientX;
+      dragLastY = event.clientY;
+      canvasElement.style.cursor = 'grabbing';
+
+      try {
+        canvasElement.setPointerCapture(event.pointerId);
+      } catch (error) {
+        // Pointer capture is optional.
+      }
+      event.preventDefault();
+    });
+
+    canvasElement.addEventListener('pointermove', (event) => {
+      if (!fallbackMode || dragPointerId !== event.pointerId) return;
+
+      const dx = event.clientX - dragLastX;
+      const dy = event.clientY - dragLastY;
+      dragLastX = event.clientX;
+      dragLastY = event.clientY;
+
+      dragEuler.setFromQuaternion(camera.quaternion);
+      dragEuler.y -= dx * 0.0024;
+      dragEuler.x -= dy * 0.0024;
+      dragEuler.x = Math.max(-1.45, Math.min(1.45, dragEuler.x));
+      camera.quaternion.setFromEuler(dragEuler);
+    });
+
+    function endFallbackDrag(event) {
+      if (dragPointerId === null) return;
+      if (event && event.pointerId !== dragPointerId) return;
+
+      try {
+        canvasElement.releasePointerCapture(dragPointerId);
+      } catch (error) {
+        // Already released.
+      }
+      dragPointerId = null;
+      canvasElement.style.cursor = 'grab';
+    }
+
+    canvasElement.addEventListener('pointerup', endFallbackDrag);
+    canvasElement.addEventListener('pointercancel', endFallbackDrag);
+
     window.addEventListener('keydown', (event) => {
-      if (!controls.isLocked) return;
+      if (!inputActive()) return;
 
       if (event.code === 'KeyE') {
         if (!event.repeat) {
@@ -2570,7 +2728,7 @@
     }
 
     function updateInteractPrompt() {
-      if (!controls.isLocked) {
+      if (!inputActive()) {
         interactPrompt.classList.remove('visible');
         return;
       }
@@ -2689,7 +2847,7 @@
     }
 
     function toggleTruck() {
-      if (!controls.isLocked) return;
+      if (!inputActive()) return;
 
       if (activeTruck) {
         exitTruck();
@@ -3233,7 +3391,7 @@
         right.set(Math.cos(yaw), 0, -Math.sin(yaw));
 
         wish.set(0, 0, 0);
-        if (controls.isLocked) {
+        if (inputActive()) {
           const moveForward = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
           const moveRight = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
           wish.addScaledVector(forward, moveForward);
