@@ -169,11 +169,12 @@ def main():
     box("CabRearWall", (1.8, 0.08, 0.8), (0, 1.02, 2.05), paint, 0.01)
     box("CabRoof", (1.9, 1.62, 0.10), (0, 1.75, 2.53), paint, 0.02)
     box("CabFrontSill", (1.86, 0.08, 0.12), (0, 2.50, 1.70), paint, 0.01)
+    box("DashTop", (1.86, 1.5, 0.08), (0, 1.72, 1.68), dark, 0.015)
 
     for sx in (-1, 1):
         box("CabSideSill", (0.07, 1.42, 0.12), (sx * 0.93, 1.75, 1.70), paint, 0.01)
-        box("CabPillarFront", (0.09, 0.09, 0.78), (sx * 0.91, 2.45, 2.08), paint, 0.01)
-        box("CabPillarRear", (0.09, 0.09, 0.78), (sx * 0.91, 1.06, 2.08), paint, 0.01)
+        box("CabPillarFront", (0.055, 0.055, 0.78), (sx * 0.915, 2.45, 2.08), dark, 0.008)
+        box("CabPillarRear", (0.055, 0.055, 0.78), (sx * 0.915, 1.06, 2.08), dark, 0.008)
 
     # Glass: windshield, side windows. They sit in the open cab frame.
     box("Windshield", (1.62, 0.025, 0.68), (0, 2.545, 2.08), glass)
@@ -210,20 +211,8 @@ def main():
         box("DoorHandle", (0.16, 0.035, 0.05), (sx * 0.96, 1.22, 1.62), dark)
         box("DoorSeam", (0.015, 0.04, 1.35), (sx * 0.955, 0.82, 1.45), dark)
 
-    # Interior dashboard and steering wheel (visible from cab camera).
+    # Interior dashboard (the in-game HUD carries the steering wheel and speed).
     box("Dashboard", (1.72, 0.42, 0.17), (0, 2.22, 1.55), dark, 0.02)
-    bpy.ops.mesh.primitive_torus_add(
-        major_radius=0.18,
-        minor_radius=0.025,
-        major_segments=16,
-        minor_segments=6,
-        location=(-0.42, 1.95, 1.56),
-        rotation=(math.radians(70), 0, 0),
-    )
-    steering = bpy.context.active_object
-    steering.name = "SteeringWheel"
-    steering.data.materials.append(dark)
-    OBJECTS.append(steering)
 
     # Wheels.
     wheel("Wheel_FL", -0.93, 1.72, 0.42, tire, rim)

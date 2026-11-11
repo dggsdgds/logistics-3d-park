@@ -95,6 +95,7 @@
     pointer-events: none;
   }
   .hint {
+    display: none;
     font-size: 12px;
     letter-spacing: .12em;
     color: var(--muted);
@@ -106,6 +107,7 @@
   .meta {
     text-align: right;
     white-space: nowrap;
+    margin-left: auto;
     font-size: 9px;
     line-height: 2;
     letter-spacing: .22em;
@@ -268,8 +270,7 @@
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
-  }
-  .interact-prompt kbd {
+  }  .interact-prompt kbd {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -282,6 +283,101 @@
     font-family: inherit;
     font-size: 11px;
     color: var(--cyan);
+  }
+
+  /* driving HUD: dark dashboard, speed readout and steering wheel */
+  .drive-hud {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2;
+    height: 260px;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .25s ease, visibility .25s;
+    background: linear-gradient(180deg,
+      rgba(6, 8, 10, 0) 0%,
+      rgba(7, 9, 11, .72) 22%,
+      #080a0c 46%,
+      #040506 100%);
+  }
+  .drive-hud::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(90, 209, 255, .35), transparent);
+  }
+  body.driving .drive-hud {
+    opacity: 1;
+    visibility: visible;
+  }
+  body.driving .crosshair {
+    opacity: 0;
+  }
+  body.driving .interact-prompt {
+    bottom: 282px;
+  }
+
+  .speed-panel {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    text-shadow: 0 0 18px rgba(90, 209, 255, 0.25);
+  }
+  .speed-label {
+    font-size: 9px;
+    letter-spacing: .36em;
+    color: #6f818f;
+    text-transform: uppercase;
+  }
+  .speed-readout {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 1px;
+    font-family: "Bahnschrift", "DIN Alternate", "Segoe UI", sans-serif;
+  }
+  #speedValue {
+    font-size: 44px;
+    line-height: 1;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: #e8f7ff;
+    font-variant-numeric: tabular-nums;
+  }
+  .speed-unit {
+    font-size: 10px;
+    letter-spacing: .16em;
+    color: #6f8a9c;
+  }
+
+  .steering-wrap {
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    width: 176px;
+    height: 176px;
+    transform: translateX(-50%);
+  }
+  .steering-wheel {
+    width: 100%;
+    height: 100%;
+    transform-origin: 50% 50%;
+    will-change: transform;
+    filter: drop-shadow(0 12px 26px rgba(0, 0, 0, 0.65));
+  }
+  .steering-wheel svg {
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   #loading {
@@ -355,6 +451,45 @@
   </div>
 
   <div class="vignette"></div>
+
+  <div id="driveHud" class="drive-hud" aria-hidden="true">
+    <div class="speed-panel">
+      <div class="speed-label">速度</div>
+      <div class="speed-readout">
+        <span id="speedValue">0</span>
+        <span class="speed-unit">km/h</span>
+      </div>
+    </div>
+
+    <div class="steering-wrap">
+      <div id="steeringWheel" class="steering-wheel">
+        <svg viewBox="0 0 200 200" aria-hidden="true">
+          <defs>
+            <radialGradient id="wheelRim" cx="50%" cy="35%" r="72%">
+              <stop offset="0" stop-color="#4a515a"/>
+              <stop offset="0.55" stop-color="#292e34"/>
+              <stop offset="1" stop-color="#111417"/>
+            </radialGradient>
+            <radialGradient id="wheelHub" cx="45%" cy="35%" r="70%">
+              <stop offset="0" stop-color="#434a53"/>
+              <stop offset="1" stop-color="#171b1f"/>
+            </radialGradient>
+          </defs>
+          <circle cx="100" cy="100" r="84" fill="none" stroke="#0a0c0e" stroke-width="24" opacity=".7"/>
+          <circle cx="100" cy="100" r="84" fill="none" stroke="url(#wheelRim)" stroke-width="20"/>
+          <circle cx="100" cy="100" r="73" fill="none" stroke="#59626c" stroke-width="1.2" opacity=".45"/>
+          <g fill="#24292f" stroke="#4b535d" stroke-width="1.5">
+            <rect x="92" y="21" width="16" height="66" rx="7"/>
+            <rect x="92" y="21" width="16" height="66" rx="7" transform="rotate(120 100 100)"/>
+            <rect x="92" y="21" width="16" height="66" rx="7" transform="rotate(240 100 100)"/>
+          </g>
+          <circle cx="100" cy="100" r="14" fill="url(#wheelHub)" stroke="#555e68" stroke-width="2"/>
+          <circle cx="100" cy="100" r="4.5" fill="#5ad1ff" opacity=".75"/>
+          <circle cx="100" cy="16" r="3.5" fill="#5ad1ff" opacity=".9"/>
+        </svg>
+      </div>
+    </div>
+  </div>
 
   <script>
     window.__ready = false;
@@ -461,6 +596,9 @@
     const interactText = document.getElementById('interactText');
     const footerHint = document.getElementById('footerHint');
     const statusLabel = document.getElementById('statusLabel');
+    const speedValue = document.getElementById('speedValue');
+    const steeringWheel = document.getElementById('steeringWheel');
+    let steeringVisual = 0;
     const WALK_HINT = footerHint.innerHTML;
     const DRIVE_HINT = '<b>↑ ↓</b> 加速/倒车 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>E</b> 下车';
 
@@ -1415,6 +1553,10 @@
 
       footerHint.innerHTML = DRIVE_HINT;
       statusLabel.textContent = 'DRIVING';
+      document.body.classList.add('driving');
+      speedValue.textContent = '0';
+      steeringVisual = 0;
+      steeringWheel.style.transform = 'rotate(0deg)';
       promptMode = '';
       updateInteractPrompt();
     }
@@ -1449,6 +1591,10 @@
       nearestTruck = null;
       footerHint.innerHTML = WALK_HINT;
       statusLabel.textContent = 'FIRST PERSON';
+      document.body.classList.remove('driving');
+      speedValue.textContent = '0';
+      steeringVisual = 0;
+      steeringWheel.style.transform = 'rotate(0deg)';
       promptMode = '';
       updateInteractPrompt();
     }
@@ -1505,6 +1651,14 @@
       for (const wheel of truck.wheels) {
         wheel.rotation.x -= truck.speed * dt / 0.42;
       }
+
+      const kmh = Math.round(Math.abs(truck.speed) * 3.6);
+      if (speedValue.textContent !== String(kmh)) {
+        speedValue.textContent = String(kmh);
+      }
+
+      steeringVisual = THREE.MathUtils.damp(steeringVisual, steer * 110, 9, dt);
+      steeringWheel.style.transform = `rotate(${steeringVisual.toFixed(1)}deg)`;
     }
 
     /* ------------------------------------------------------------------ */
