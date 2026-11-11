@@ -328,6 +328,7 @@
   <script type="module">
     import * as THREE from 'three';
     import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
     const EYE_HEIGHT = 1.7;
     const CONTAINER = { w: 2.44, h: 2.59, l: 12.19 };
@@ -350,7 +351,7 @@
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    renderer.toneMappingExposure = 1.3;
     document.body.appendChild(renderer.domElement);
 
     const anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -361,6 +362,14 @@
     const scene = new THREE.Scene();
     scene.background = makeSkyTexture();
     scene.fog = new THREE.Fog(0x0e1c28, 170, 460);
+
+    // HDR-ish image based lighting for the metal container surfaces.
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const roomEnvironment = new RoomEnvironment();
+    scene.environment = pmremGenerator.fromScene(roomEnvironment, 0.04).texture;
+    scene.environmentIntensity = 0.3;
+    roomEnvironment.dispose();
+    pmremGenerator.dispose();
 
     const camera = new THREE.PerspectiveCamera(
       70,
@@ -449,7 +458,7 @@
     /* ------------------------------------------------------------------ */
     /*  Lights                                                             */
     /* ------------------------------------------------------------------ */
-    const sun = new THREE.DirectionalLight(0xffe2b8, 4.2);
+    const sun = new THREE.DirectionalLight(0xffe2b8, 5.2);
     sun.position.set(75, 70, 45);
     sun.castShadow = true;
     sun.shadow.mapSize.set(4096, 4096);
@@ -465,10 +474,13 @@
     scene.add(sun);
     scene.add(sun.target);
 
-    const skyFill = new THREE.HemisphereLight(0x9dc0e6, 0x1b2027, 1.05);
+    const skyFill = new THREE.HemisphereLight(0x9dc0e6, 0x1b2027, 0.85);
     scene.add(skyFill);
 
-    const coolFill = new THREE.DirectionalLight(0x4a8fce, 1.0);
+    const ambient = new THREE.AmbientLight(0xc4d8ea, 0.18);
+    scene.add(ambient);
+
+    const coolFill = new THREE.DirectionalLight(0x4a8fce, 0.8);
     coolFill.position.set(-60, 40, -80);
     scene.add(coolFill);
 
@@ -480,6 +492,7 @@
       new THREE.MeshStandardMaterial({
         map: makeConcreteTexture(),
         color: 0xffffff,
+        envMapIntensity: 0.35,
         roughness: 0.94,
         metalness: 0.06
       })
@@ -529,6 +542,7 @@
         color: 0xffffff,
         roughness: 0.26,
         metalness: 0.35,
+        envMapIntensity: 0.25,
         emissive: 0x0b2a3d,
         emissiveIntensity: 0.6
       })
@@ -659,12 +673,14 @@
 
     const containerGeo = new THREE.BoxGeometry(CONTAINER.w, CONTAINER.h, CONTAINER.l);
     const containerTex = makeContainerTexture();
+    const containerBump = makeContainerBumpTexture();
     const containerMat = new THREE.MeshStandardMaterial({
       map: containerTex,
-      bumpMap: containerTex,
-      bumpScale: 0.012,
-      roughness: 0.62,
-      metalness: 0.32,
+      bumpMap: containerBump,
+      bumpScale: 0.1,
+      roughness: 0.6,
+      metalness: 0.8,
+      envMapIntensity: 1.1,
       color: 0xffffff
     });
 
@@ -954,7 +970,7 @@
       c.height = size;
       const ctx = c.getContext('2d');
 
-      ctx.fillStyle = '#30353c';
+      ctx.fillStyle = '#252a31';
       ctx.fillRect(0, 0, size, size);
 
       for (let i = 0; i < 900; i++) {
@@ -963,7 +979,7 @@
         ctx.fillRect(Math.random() * size, Math.random() * size, 2 + Math.random() * 5, 2 + Math.random() * 5);
       }
 
-      ctx.strokeStyle = '#20242a';
+      ctx.strokeStyle = '#171b20';
       ctx.lineWidth = 3;
       ctx.strokeRect(1.5, 1.5, size - 3, size - 3);
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
@@ -975,6 +991,46 @@
       tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(120, 80);
       tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = anisotropy;
+      return tex;
+    }
+
+    function makeContainerBumpTexture() {
+      const size = 256;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+      const img = ctx.createImageData(size, size);
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          // Vertical corrugation: grooves line up with the dark ribs in the colour map.
+          const rib = 0.5 - 0.5 * Math.cos((x / size) * Math.PI * 2 * 4);
+          let height = 80 + rib * 150;
+
+          // Raised top / bottom rails.
+          if (y < 10 || y > size - 10) height = 245;
+          else if (y < 18 || y > size - 18) height = 190;
+
+          // Raised corner posts.
+          if (x < 6 || x > size - 6) height = 250;
+
+          const i = (y * size + x) * 4;
+          const v = Math.round(height);
+          img.data[i] = v;
+          img.data[i + 1] = v;
+          img.data[i + 2] = v;
+          img.data[i + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(img, 0, 0);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(8, 1);
       tex.anisotropy = anisotropy;
       return tex;
     }
