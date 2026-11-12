@@ -2713,9 +2713,14 @@
     });
     const floodGlowTexture = makeFloodlightGlowTexture();
 
-    function addFloodlight(x, z, height, targetX, targetZ, color, intensity, glowColor) {
+    function addFloodlight(x, z, height, targetX, targetZ, color, intensity, glowColor, armDirection = 0) {
       const group = new THREE.Group();
       group.position.set(x, 0, z);
+
+      const compact = armDirection !== 0;
+      const armLength = compact ? 1.5 : 2.4;
+      const armCenter = compact ? armDirection * 0.38 : 0;
+      const headOffset = compact ? armDirection * 0.55 : 0.7;
 
       const pole = new THREE.Mesh(
         new THREE.CylinderGeometry(0.14, 0.24, height, 8),
@@ -2726,17 +2731,17 @@
       group.add(pole);
 
       const crossarm = new THREE.Mesh(
-        new THREE.BoxGeometry(2.4, 0.13, 0.13),
+        new THREE.BoxGeometry(armLength, 0.13, 0.13),
         floodPoleMat
       );
-      crossarm.position.y = height - 0.35;
+      crossarm.position.set(armCenter, height - 0.35, 0);
       group.add(crossarm);
 
       const head = new THREE.Mesh(
         new THREE.BoxGeometry(1.2, 0.28, 0.44),
         floodHeadMat
       );
-      head.position.set(0.7, height - 0.45, 0);
+      head.position.set(headOffset, height - 0.45, 0);
       head.rotation.z = -0.14;
       group.add(head);
 
@@ -2749,12 +2754,12 @@
         toneMapped: false,
         opacity: 0.8
       }));
-      glow.position.set(0.7, height - 0.42, 0);
+      glow.position.set(headOffset, height - 0.42, 0);
       glow.scale.setScalar(8.5);
       group.add(glow);
 
       const spot = new THREE.SpotLight(color, intensity, 72, 0.62, 0.58, 1.35);
-      spot.position.set(x + 0.7, height - 0.5, z);
+      spot.position.set(x + headOffset, height - 0.5, z);
       spot.target.position.set(targetX, 0, targetZ);
       spot.castShadow = false;
       scene.add(spot);
@@ -2767,12 +2772,12 @@
     addFloodlight(10.5, 64, 9.5, 0, 54, 0xffbf72, 230, 0xffd27c);
     addFloodlight(-13, 71, 12, 0, 76, 0xffae5c, 260, 0xffc46b);
     addFloodlight(13, 71, 12, 0, 76, 0xffae5c, 260, 0xffc46b);
-    addFloodlight(-34, -55, 14, -20, -68, 0xc7e7ff, 220, 0xd8f1ff);
-    addFloodlight(34, -55, 14, 20, -68, 0xc7e7ff, 220, 0xd8f1ff);
-    addFloodlight(-7.5, 44, 8.5, -1, 38, 0xffb45e, 170, 0xffce78);
-    addFloodlight(7.5, 44, 8.5, 1, 38, 0xffb45e, 170, 0xffce78);
-    addFloodlight(-7.5, 10, 8.5, -1, 4, 0xffb45e, 170, 0xffce78);
-    addFloodlight(7.5, 10, 8.5, 1, 4, 0xffb45e, 170, 0xffce78);
+    addFloodlight(-34, -60, 14, -20, -68, 0xc7e7ff, 220, 0xd8f1ff);
+    addFloodlight(34, -60, 14, 20, -68, 0xc7e7ff, 220, 0xd8f1ff);
+    addFloodlight(-6.6, 44, 8.5, -1, 38, 0xffb45e, 170, 0xffce78, 1);
+    addFloodlight(6.6, 44, 8.5, 1, 38, 0xffb45e, 170, 0xffce78, -1);
+    addFloodlight(-6.6, 10, 8.5, -1, 4, 0xffb45e, 170, 0xffce78, 1);
+    addFloodlight(6.6, 10, 8.5, 1, 4, 0xffb45e, 170, 0xffce78, -1);
 
     /* ------------------------------------------------------------------ */
     /*  Dock ground                                                        */
