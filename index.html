@@ -1090,6 +1090,376 @@
     line-height: 2;
   }
 
+  /* ------------------------------------------------------------------ */
+  /*  Full-screen logistics dashboard (TAB)                              */
+  /* ------------------------------------------------------------------ */
+  .dashboard-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 8;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    box-sizing: border-box;
+    padding: 18px 28px 12px;
+    color: #dff7ff;
+    font-family: "Bahnschrift", "Microsoft YaHei", "Segoe UI", sans-serif;
+    background:
+      radial-gradient(circle at 50% -10%, rgba(38, 154, 194, 0.22), transparent 42%),
+      radial-gradient(circle at 8% 90%, rgba(28, 101, 128, 0.12), transparent 36%),
+      linear-gradient(135deg, rgba(2, 10, 16, 0.82), rgba(4, 18, 27, 0.72) 50%, rgba(2, 11, 17, 0.86));
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    overflow: hidden;
+    transition: opacity .24s ease, visibility .24s;
+  }
+  .dashboard-overlay.show {
+    opacity: 1;
+    visibility: visible;
+  }
+  .dashboard-overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(90, 209, 255, .045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(90, 209, 255, .045) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, .95), transparent 78%);
+    mask-image: radial-gradient(ellipse at center, rgba(0, 0, 0, .95), transparent 78%);
+    pointer-events: none;
+  }
+  .dash-scan {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -24%;
+    height: 26%;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent, rgba(90, 209, 255, .045), transparent);
+    animation: dashScan 10s linear infinite;
+  }
+  @keyframes dashScan {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(520%); }
+  }
+  .dash-header,
+  .dash-grid,
+  .dash-footer {
+    position: relative;
+    z-index: 1;
+  }
+  .dash-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(90, 209, 255, .2);
+  }
+  .dash-title {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .dash-kicker {
+    color: #5c9eb7;
+    font-size: 9px;
+    letter-spacing: .32em;
+  }
+  .dash-title h1 {
+    margin: 0;
+    color: #ecfbff;
+    font-size: clamp(20px, 2.1vw, 31px);
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-shadow: 0 0 24px rgba(90, 209, 255, .24);
+  }
+  .dash-header-right {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+  .dash-live {
+    color: #7dffae;
+    font-size: 10px;
+    letter-spacing: .18em;
+    font-variant-numeric: tabular-nums;
+  }
+  .dash-live-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 8px;
+    border-radius: 50%;
+    background: #62ff9a;
+    box-shadow: 0 0 10px #62ff9a;
+    animation: dashLive 1.4s ease-in-out infinite alternate;
+  }
+  @keyframes dashLive {
+    from { opacity: .35; }
+    to { opacity: 1; }
+  }
+  .dash-close {
+    color: #6d8a99;
+    font-size: 10px;
+    letter-spacing: .12em;
+  }
+  .dash-close kbd {
+    display: inline-block;
+    margin: 0 4px;
+    padding: 2px 7px;
+    border: 1px solid rgba(90, 209, 255, .4);
+    color: #9fe8ff;
+    background: rgba(90, 209, 255, .06);
+    font-size: 10px;
+  }
+  .dash-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(260px, .82fr) minmax(0, 1.05fr);
+    gap: 14px;
+    min-height: 0;
+  }
+  .dash-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    padding: 14px 16px 12px;
+    border: 1px solid rgba(90, 209, 255, .22);
+    background:
+      linear-gradient(145deg, rgba(8, 24, 34, .82), rgba(3, 11, 17, .74));
+    box-shadow:
+      inset 0 0 50px rgba(90, 209, 255, .035),
+      0 0 30px rgba(0, 0, 0, .22);
+  }
+  .dash-panel::before,
+  .dash-panel::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+  }
+  .dash-panel::before {
+    top: -1px;
+    left: -1px;
+    border-top: 2px solid #5ad1ff;
+    border-left: 2px solid #5ad1ff;
+  }
+  .dash-panel::after {
+    right: -1px;
+    bottom: -1px;
+    border-right: 2px solid #5ad1ff;
+    border-bottom: 2px solid #5ad1ff;
+  }
+  .dash-panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(90, 209, 255, .12);
+    color: #c9efff;
+    font-size: 12px;
+    letter-spacing: .18em;
+  }
+  .dash-tag {
+    color: #4e8095;
+    font-size: 8px;
+    letter-spacing: .2em;
+  }
+  .dash-stat-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 10px;
+    padding: 11px 0 4px;
+  }
+  .dash-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+  }
+  .dash-stat span {
+    color: #537b8d;
+    font-size: 8px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .dash-stat b {
+    color: #eaf9ff;
+    font-size: 25px;
+    line-height: 1;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  .dash-stat em {
+    color: #4f7f91;
+    font-size: 8px;
+    font-style: normal;
+    letter-spacing: .08em;
+  }
+  .dash-truck-stat b {
+    color: #ffcf4a;
+    font-size: 12px;
+    letter-spacing: .08em;
+  }
+  .chart-wrap {
+    position: relative;
+    flex: 1;
+    min-height: 150px;
+    margin-top: 2px;
+  }
+  .chart-wrap canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .dash-legend,
+  .dash-area-legend {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-height: 16px;
+    color: #5f8191;
+    font-size: 9px;
+    letter-spacing: .1em;
+  }
+  .dash-dot {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border-radius: 50%;
+    vertical-align: 1px;
+  }
+  .dash-speed { background: #5ad1ff; box-shadow: 0 0 8px #5ad1ff; }
+  .dash-fuel { background: #ffcf4a; box-shadow: 0 0 8px #ffcf4a; }
+  .dash-area-a { background: #5ad1ff; box-shadow: 0 0 8px #5ad1ff; }
+  .dash-area-b { background: #ffb84a; box-shadow: 0 0 8px #ffb84a; }
+  .dash-center {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 0;
+    overflow: hidden;
+    text-align: center;
+    border: 1px solid rgba(255, 188, 70, .25);
+    background:
+      radial-gradient(circle at 50% 40%, rgba(255, 186, 70, .08), transparent 54%),
+      linear-gradient(160deg, rgba(11, 24, 31, .8), rgba(4, 12, 17, .74));
+    box-shadow: inset 0 0 70px rgba(255, 186, 70, .035);
+  }
+  .dash-center::before,
+  .dash-center::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 46%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 198, 74, .5), transparent);
+  }
+  .dash-center::before { top: 0; }
+  .dash-center::after { bottom: 0; }
+  .dash-center-kicker {
+    color: #8a744a;
+    font-size: 8px;
+    letter-spacing: .3em;
+    margin-bottom: 2.2vh;
+  }
+  .dash-kpi {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+  .dash-kpi-label {
+    color: #a6bcc6;
+    font-size: clamp(10px, .9vw, 13px);
+    letter-spacing: .16em;
+  }
+  .dash-kpi-value {
+    color: #f2fbff;
+    font-family: "Bahnschrift", "DIN Alternate", "Microsoft YaHei", sans-serif;
+    font-size: clamp(58px, 7.4vw, 108px);
+    line-height: .86;
+    font-weight: 600;
+    letter-spacing: .01em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 32px rgba(90, 209, 255, .25);
+  }
+  .dash-time {
+    color: #ffd66c;
+    font-size: clamp(34px, 4.2vw, 68px);
+    letter-spacing: .035em;
+    text-shadow: 0 0 28px rgba(255, 198, 74, .2);
+  }
+  .dash-kpi-unit {
+    color: #557483;
+    font-size: 8px;
+    letter-spacing: .24em;
+  }
+  .dash-kpi-divider {
+    width: min(62%, 360px);
+    height: 1px;
+    margin: 2.3vh 0;
+    background: linear-gradient(90deg, transparent, rgba(90, 209, 255, .3), transparent);
+  }
+  .dash-center-meta {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    bottom: 13px;
+    display: flex;
+    justify-content: space-between;
+    color: #405b68;
+    font-size: 8px;
+    letter-spacing: .14em;
+  }
+  .dash-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(90, 209, 255, .16);
+    color: #3f5f6d;
+    font-size: 8px;
+    letter-spacing: .16em;
+  }
+  @media (max-width: 1100px) {
+    .dashboard-overlay {
+      padding: 12px;
+      gap: 8px;
+    }
+    .dash-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .dash-center {
+      grid-column: 1 / -1;
+      order: -1;
+      padding: 10px;
+    }
+    .dash-center-kicker { display: none; }
+    .dash-kpi-value { font-size: 44px; }
+    .dash-time { font-size: 28px; }
+    .dash-kpi-divider { display: none; }
+    .dash-center-meta { display: none; }
+    .dash-stat b { font-size: 19px; }
+    .dash-close { display: none; }
+  }
+
   @media (max-width: 640px) {
     .hud, .footer { padding: 20px 20px; }
     .meta { display: none; }
@@ -1144,7 +1514,7 @@
   </div>
 
   <footer class="footer">
-    <div class="hint" id="footerHint"><b>W A S D</b> 移动 &nbsp;·&nbsp; <b>E</b> 互动 &nbsp;·&nbsp; <b>F</b> 搬运/货叉 &nbsp;·&nbsp; <b>鼠标</b> 环视 &nbsp;·&nbsp; <b>ESC</b> 释放鼠标</div>
+    <div class="hint" id="footerHint"><b>W A S D</b> 移动 &nbsp;·&nbsp; <b>E</b> 互动 &nbsp;·&nbsp; <b>F</b> 搬运/货叉 &nbsp;·&nbsp; <b>TAB</b> 数据大屏 &nbsp;·&nbsp; <b>鼠标</b> 环视 &nbsp;·&nbsp; <b>ESC</b> 释放鼠标</div>
     <div class="meta">40FT Containers <span id="containerCount">—</span><br>Instanced <span>4 DRAWS</span></div>
   </footer>
 
@@ -1184,6 +1554,77 @@
       <strong>重心过高</strong>
       <span>有倾覆危险，请降下货叉！</span>
     </div>
+  </div>
+
+  <div id="dashboard" class="dashboard-overlay" aria-hidden="true">
+    <div class="dash-scan"></div>
+    <header class="dash-header">
+      <div class="dash-title">
+        <span class="dash-kicker">JINZHOU PORT · LOGISTICS CONTROL TOWER</span>
+        <h1>物流数据可视化大屏</h1>
+      </div>
+      <div class="dash-header-right">
+        <div class="dash-live"><span class="dash-live-dot"></span> LIVE <b id="dashboardClock">--:--:--</b></div>
+        <div class="dash-close">按 <kbd>TAB</kbd> 关闭</div>
+      </div>
+    </header>
+
+    <main class="dash-grid">
+      <section class="dash-panel">
+        <div class="dash-panel-head">
+          <span>卡车实时遥测</span>
+          <span class="dash-tag">TELEMETRY / 60S</span>
+        </div>
+        <div class="dash-stat-row">
+          <div class="dash-stat"><span>当前速度</span><b id="dashboardSpeed">0</b><em>km/h</em></div>
+          <div class="dash-stat"><span>燃油余量</span><b id="dashboardFuel">100</b><em>%</em></div>
+          <div class="dash-stat dash-truck-stat"><span>卡车</span><b id="dashboardTruck">—</b></div>
+        </div>
+        <div class="chart-wrap"><canvas id="dashboardLineChart"></canvas></div>
+        <div class="dash-legend">
+          <span><i class="dash-dot dash-speed"></i>速度</span>
+          <span><i class="dash-dot dash-fuel"></i>油耗 / 燃油</span>
+        </div>
+      </section>
+
+      <section class="dash-center">
+        <div class="dash-center-kicker">DAILY OPERATION OUTPUT</div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-label">今日累计搬运托盘数</div>
+          <div class="dash-kpi-value" id="dashboardPallets">0</div>
+          <div class="dash-kpi-unit">PALLETS TODAY</div>
+        </div>
+        <div class="dash-kpi-divider"></div>
+        <div class="dash-kpi">
+          <div class="dash-kpi-label">累计作业时长</div>
+          <div class="dash-kpi-value dash-time" id="dashboardWork">00:00:00</div>
+          <div class="dash-kpi-unit">ACTIVE OPERATION TIME</div>
+        </div>
+        <div class="dash-center-meta">
+          <span>SHIFT A</span>
+          <span>JINZHOU PORT</span>
+          <span id="dashboardDate">----</span>
+        </div>
+      </section>
+
+      <section class="dash-panel">
+        <div class="dash-panel-head">
+          <span>区域库容占用率</span>
+          <span class="dash-tag">YARD CAPACITY</span>
+        </div>
+        <div class="chart-wrap"><canvas id="dashboardBarChart"></canvas></div>
+        <div class="dash-area-legend">
+          <span><i class="dash-dot dash-area-a"></i>A区</span>
+          <span><i class="dash-dot dash-area-b"></i>B区</span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="dash-footer">
+      <span>REAL-TIME OPERATION TELEMETRY</span>
+      <span>SPEED · FUEL · YARD CAPACITY · THROUGHPUT</span>
+      <span>JINZHOU PORT / GATEWAY OS</span>
+    </footer>
   </div>
 
   <div id="driveHud" class="drive-hud" aria-hidden="true">
@@ -1446,6 +1887,423 @@
     const DRIVE_HINT = '<b>↑ ↓</b> 加速/倒车 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>E</b> 下车';
     const FORKLIFT_HINT = '<b>↑ ↓</b> 驾驶 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>Space</b> 升 / <b>C</b> 降货叉 &nbsp;·&nbsp; <b>F</b> 插取/放下 &nbsp;·&nbsp; <b>E</b> 下车';
 
+    /* ------------------------------------------------------------------ */
+    /*  Full-screen logistics dashboard (TAB)                              */
+    /* ------------------------------------------------------------------ */
+    const dashboardOverlay = document.getElementById('dashboard');
+    const dashboardLineCanvas = document.getElementById('dashboardLineChart');
+    const dashboardBarCanvas = document.getElementById('dashboardBarChart');
+    const dashboardLineCtx = dashboardLineCanvas.getContext('2d');
+    const dashboardBarCtx = dashboardBarCanvas.getContext('2d');
+    const dashboardPallets = document.getElementById('dashboardPallets');
+    const dashboardWork = document.getElementById('dashboardWork');
+    const dashboardSpeed = document.getElementById('dashboardSpeed');
+    const dashboardFuel = document.getElementById('dashboardFuel');
+    const dashboardTruck = document.getElementById('dashboardTruck');
+    const dashboardClock = document.getElementById('dashboardClock');
+    const dashboardDate = document.getElementById('dashboardDate');
+
+    const DASHBOARD_STORE_KEY = 'jinzhou-port-dashboard-v1';
+    let dashboardOpen = false;
+    let lastDashboardTruck = null;
+    let dashboardSampleAccumulator = 0;
+    let dashboardDrawAccumulator = 0;
+    let dashboardSaveAccumulator = 0;
+    const dashboardHistory = { speed: [], fuel: [], maxSamples: 180 };
+    const dashboardAreaDisplay = { A: 0, B: 0 };
+
+    function dashboardTodayKey() {
+      const now = new Date();
+      return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
+
+    function loadDashboardStats() {
+      const today = dashboardTodayKey();
+      try {
+        const raw = localStorage.getItem(DASHBOARD_STORE_KEY);
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && data.date === today) {
+            return {
+              date: today,
+              palletsToday: Math.max(0, Number(data.palletsToday) || 0),
+              workSeconds: Math.max(0, Number(data.workSeconds) || 0)
+            };
+          }
+        }
+      } catch (error) {
+        // Storage can be unavailable in private mode; dashboard still works.
+      }
+      return { date: today, palletsToday: 0, workSeconds: 0 };
+    }
+
+    const dashboardStats = loadDashboardStats();
+
+    function persistDashboardStats() {
+      try {
+        localStorage.setItem(DASHBOARD_STORE_KEY, JSON.stringify({
+          date: dashboardStats.date,
+          palletsToday: dashboardStats.palletsToday,
+          workSeconds: dashboardStats.workSeconds
+        }));
+      } catch (error) {
+        // Ignore storage failures.
+      }
+    }
+
+    function formatDashboardDuration(seconds) {
+      const total = Math.max(0, Math.floor(seconds));
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      const secs = total % 60;
+      return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function updateDashboardKpis() {
+      dashboardPallets.textContent = String(dashboardStats.palletsToday).padStart(3, '0');
+      dashboardWork.textContent = formatDashboardDuration(dashboardStats.workSeconds);
+      dashboardDate.textContent = dashboardStats.date;
+    }
+
+    function updateDashboardClock() {
+      const now = new Date();
+      dashboardClock.textContent = now.toLocaleTimeString('zh-CN', { hour12: false });
+      dashboardDate.textContent = dashboardTodayKey();
+    }
+
+    function getAreaUtilization() {
+      const buckets = {
+        A: { sum: 0, count: 0 },
+        B: { sum: 0, count: 0 }
+      };
+      for (const target of warehouseTargets) {
+        const key = target.area.charAt(0);
+        if (!buckets[key]) continue;
+        buckets[key].sum += Math.max(0, Math.min(100, target.utilization));
+        buckets[key].count += 1;
+      }
+      return {
+        A: buckets.A.count ? buckets.A.sum / buckets.A.count : 0,
+        B: buckets.B.count ? buckets.B.sum / buckets.B.count : 0,
+        countA: buckets.A.count,
+        countB: buckets.B.count
+      };
+    }
+
+    function resizeDashboardCanvases() {
+      if (!dashboardOpen) return;
+      for (const canvas of [dashboardLineCanvas, dashboardBarCanvas]) {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.max(1, Math.floor(rect.width * dpr));
+        const height = Math.max(1, Math.floor(rect.height * dpr));
+        if (canvas.width !== width || canvas.height !== height) {
+          canvas.width = width;
+          canvas.height = height;
+        }
+      }
+    }
+
+    function drawDashboardLineChart() {
+      const canvas = dashboardLineCanvas;
+      const ctx = dashboardLineCtx;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      if (w < 30 || h < 30) return;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const padL = 43;
+      const padR = 43;
+      const padT = 22;
+      const padB = 20;
+      const pw = Math.max(1, w - padL - padR);
+      const ph = Math.max(1, h - padT - padB);
+
+      let maxSpeed = 40;
+      for (const value of dashboardHistory.speed) {
+        if (value > maxSpeed) maxSpeed = value;
+      }
+      maxSpeed = Math.max(40, Math.ceil((maxSpeed * 1.18) / 10) * 10);
+
+      ctx.font = '9px "Bahnschrift", "Segoe UI", sans-serif';
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(90, 209, 255, 0.10)';
+
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (ph * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + pw, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#527789';
+        ctx.textAlign = 'right';
+        ctx.fillText(String(Math.round(maxSpeed * (1 - i / 4))), padL - 7, y + 3);
+        ctx.textAlign = 'left';
+        ctx.fillText(String(Math.round(100 * (1 - i / 4))), padL + pw + 7, y + 3);
+      }
+
+      for (let i = 0; i <= 6; i++) {
+        const x = padL + (pw * i) / 6;
+        ctx.beginPath();
+        ctx.moveTo(x, padT);
+        ctx.lineTo(x, padT + ph);
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = '#5f8798';
+      ctx.textAlign = 'left';
+      ctx.fillText('km/h', 4, padT - 9);
+      ctx.textAlign = 'right';
+      ctx.fillText('% FUEL', w - 4, padT - 9);
+
+      ctx.fillStyle = '#3f6272';
+      ctx.textAlign = 'left';
+      ctx.fillText('-60s', padL, h - 5);
+      ctx.textAlign = 'right';
+      ctx.fillText('NOW', padL + pw, h - 5);
+
+      const speedHistory = dashboardHistory.speed;
+      const fuelHistory = dashboardHistory.fuel;
+      const count = Math.min(speedHistory.length, fuelHistory.length);
+      if (count < 2) {
+        ctx.fillStyle = 'rgba(90, 209, 255, 0.35)';
+        ctx.textAlign = 'center';
+        ctx.font = '11px "Bahnschrift", "Segoe UI", sans-serif';
+        ctx.fillText('WAITING FOR TELEMETRY', padL + pw / 2, padT + ph / 2);
+        return;
+      }
+
+      const maxSamples = dashboardHistory.maxSamples;
+      const offset = Math.max(0, maxSamples - count);
+      const xAt = (index) => padL + ((offset + index) / (maxSamples - 1)) * pw;
+      const ySpeed = (value) => padT + ph - (value / maxSpeed) * ph;
+      const yFuel = (value) => padT + ph - (value / 100) * ph;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(xAt(0), padT + ph);
+      for (let i = 0; i < count; i++) {
+        ctx.lineTo(xAt(i), ySpeed(speedHistory[i]));
+      }
+      ctx.lineTo(xAt(count - 1), padT + ph);
+      ctx.closePath();
+      const areaGradient = ctx.createLinearGradient(0, padT, 0, padT + ph);
+      areaGradient.addColorStop(0, 'rgba(90, 209, 255, 0.20)');
+      areaGradient.addColorStop(1, 'rgba(90, 209, 255, 0.01)');
+      ctx.fillStyle = areaGradient;
+      ctx.fill();
+
+      ctx.beginPath();
+      for (let i = 0; i < count; i++) {
+        const x = xAt(i);
+        const y = ySpeed(speedHistory[i]);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = '#5ad1ff';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = 'rgba(90, 209, 255, 0.65)';
+      ctx.shadowBlur = 7;
+      ctx.stroke();
+
+      ctx.beginPath();
+      for (let i = 0; i < count; i++) {
+        const x = xAt(i);
+        const y = yFuel(fuelHistory[i]);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = '#ffcf4a';
+      ctx.lineWidth = 1.5;
+      ctx.shadowColor = 'rgba(255, 207, 74, 0.55)';
+      ctx.shadowBlur = 6;
+      ctx.stroke();
+      ctx.restore();
+
+      const lastX = xAt(count - 1);
+      ctx.beginPath();
+      ctx.arc(lastX, ySpeed(speedHistory[count - 1]), 3.2, 0, Math.PI * 2);
+      ctx.fillStyle = '#dff9ff';
+      ctx.shadowColor = '#5ad1ff';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    function drawDashboardBarChart() {
+      const canvas = dashboardBarCanvas;
+      const ctx = dashboardBarCtx;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      if (w < 30 || h < 30) return;
+
+      const actual = getAreaUtilization();
+      dashboardAreaDisplay.A += (actual.A - dashboardAreaDisplay.A) * 0.18;
+      dashboardAreaDisplay.B += (actual.B - dashboardAreaDisplay.B) * 0.18;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+
+      const padL = 37;
+      const padR = 18;
+      const padT = 30;
+      const padB = 39;
+      const pw = Math.max(1, w - padL - padR);
+      const ph = Math.max(1, h - padT - padB);
+
+      ctx.font = '9px "Bahnschrift", "Segoe UI", sans-serif';
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(90, 209, 255, 0.10)';
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (ph * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(padL + pw, y);
+        ctx.stroke();
+        ctx.fillStyle = '#527789';
+        ctx.textAlign = 'right';
+        ctx.fillText(`${Math.round(100 * (1 - i / 4))}%`, padL - 7, y + 3);
+      }
+
+      ctx.setLineDash([4, 5]);
+      ctx.strokeStyle = 'rgba(255, 198, 74, 0.35)';
+      ctx.beginPath();
+      const alertY = padT + ph * (1 - 80 / 100);
+      ctx.moveTo(padL, alertY);
+      ctx.lineTo(padL + pw, alertY);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#8f7b4f';
+      ctx.textAlign = 'left';
+      ctx.fillText('80% CAPACITY LINE', padL + 4, alertY - 5);
+
+      const bars = [
+        { key: 'A', label: 'A区', color: '#5ad1ff', value: dashboardAreaDisplay.A, count: actual.countA },
+        { key: 'B', label: 'B区', color: '#ffb84a', value: dashboardAreaDisplay.B, count: actual.countB }
+      ];
+      const barW = Math.min(74, pw * 0.17);
+      const centers = [padL + pw * 0.29, padL + pw * 0.71];
+
+      bars.forEach((bar, index) => {
+        const center = centers[index];
+        const value = Math.max(0, Math.min(100, bar.value));
+        const barH = (value / 100) * ph;
+        const x = center - barW / 2;
+        const y = padT + ph - barH;
+
+        ctx.fillStyle = 'rgba(90, 209, 255, 0.035)';
+        ctx.fillRect(x, padT, barW, ph);
+        ctx.strokeStyle = 'rgba(90, 209, 255, 0.12)';
+        ctx.strokeRect(x, padT, barW, ph);
+
+        const gradient = ctx.createLinearGradient(0, y, 0, padT + ph);
+        gradient.addColorStop(0, bar.color);
+        gradient.addColorStop(1, 'rgba(20, 65, 86, 0.25)');
+        ctx.fillStyle = gradient;
+        ctx.shadowColor = bar.color;
+        ctx.shadowBlur = 16;
+        ctx.fillRect(x, y, barW, barH);
+        ctx.shadowBlur = 0;
+
+        ctx.fillStyle = '#eafaff';
+        ctx.textAlign = 'center';
+        ctx.font = '600 22px "Bahnschrift", "Segoe UI", sans-serif';
+        ctx.fillText(`${Math.round(value)}%`, center, Math.max(padT + 16, y - 8));
+
+        ctx.fillStyle = bar.color;
+        ctx.font = '11px "Bahnschrift", "Microsoft YaHei", sans-serif';
+        ctx.fillText(bar.label, center, padT + ph + 17);
+        ctx.fillStyle = '#4e7283';
+        ctx.font = '8px "Bahnschrift", "Segoe UI", sans-serif';
+        ctx.fillText(`${bar.count} 货位`, center, padT + ph + 29);
+      });
+    }
+
+    function drawDashboard() {
+      resizeDashboardCanvases();
+      updateDashboardClock();
+      drawDashboardLineChart();
+      drawDashboardBarChart();
+      updateDashboardKpis();
+    }
+
+    function pushDashboardSample() {
+      if (activeTruck) lastDashboardTruck = activeTruck;
+      const truck = activeTruck || lastDashboardTruck || trucks[0] || null;
+      const speed = activeTruck ? Math.abs(activeTruck.speed) * 3.6 : 0;
+      const fuel = truck ? Math.max(0, Math.min(100, truck.fuel)) : 0;
+
+      dashboardHistory.speed.push(speed);
+      dashboardHistory.fuel.push(fuel);
+      while (dashboardHistory.speed.length > dashboardHistory.maxSamples) dashboardHistory.speed.shift();
+      while (dashboardHistory.fuel.length > dashboardHistory.maxSamples) dashboardHistory.fuel.shift();
+
+      dashboardSpeed.textContent = String(Math.round(speed));
+      dashboardFuel.textContent = String(Math.round(fuel));
+      dashboardTruck.textContent = truck ? `TRUCK ${String(trucks.indexOf(truck) + 1).padStart(2, '0')}` : '—';
+    }
+
+    function updateDashboard(dt) {
+      if (!dashboardOpen && (activeTruck || activeForklift)) {
+        dashboardStats.workSeconds += dt;
+      }
+
+      dashboardSampleAccumulator += dt;
+      if (dashboardSampleAccumulator >= 0.35) {
+        dashboardSampleAccumulator = 0;
+        pushDashboardSample();
+      }
+
+      dashboardSaveAccumulator += dt;
+      if (dashboardSaveAccumulator >= 5) {
+        dashboardSaveAccumulator = 0;
+        persistDashboardStats();
+      }
+
+      if (dashboardOpen) {
+        dashboardDrawAccumulator += dt;
+        if (dashboardDrawAccumulator >= 0.1) {
+          dashboardDrawAccumulator = 0;
+          drawDashboard();
+        }
+      }
+    }
+
+    function setDashboardOpen(open) {
+      if (open === dashboardOpen) return;
+      dashboardOpen = open;
+      dashboardOverlay.classList.toggle('show', open);
+      dashboardOverlay.setAttribute('aria-hidden', String(!open));
+      document.body.classList.toggle('dashboard-open', open);
+
+      if (open) {
+        keys.clear();
+        dashboardDrawAccumulator = 0;
+        updateDashboardKpis();
+        resizeDashboardCanvases();
+        drawDashboard();
+      } else {
+        updateInteractPrompt();
+      }
+    }
+
+    function toggleDashboard() {
+      setDashboardOpen(!dashboardOpen);
+    }
+
+    window.addEventListener('beforeunload', persistDashboardStats);
+    window.addEventListener('keydown', (event) => {
+      if (event.code !== 'Tab') return;
+      event.preventDefault();
+      toggleDashboard();
+    }, true);
+
+
     let fallbackMode = false;
     let lockAttemptTimer = null;
     let inputHintTimer = null;
@@ -1579,6 +2437,7 @@
     canvasElement.addEventListener('pointercancel', endFallbackDrag);
 
     window.addEventListener('keydown', (event) => {
+      if (dashboardOpen) return;
       if (!inputActive()) return;
 
       if (event.code === 'KeyE') {
@@ -3821,9 +4680,13 @@
 
       activeForklift.hasLoad = false;
       activePallet = null;
+      forkliftTarget.utilization = Math.min(98, forkliftTarget.utilization + 4);
       forkliftJob.stage = 'done';
       jobGroup.visible = false;
       addScore(100);
+      dashboardStats.palletsToday += 1;
+      persistDashboardStats();
+      updateDashboardKpis();
       renderForkliftJobHud();
       showToast('托盘已入库，仓储作业完成', 'FORKLIFT JOB COMPLETE');
 
@@ -4063,6 +4926,7 @@
       if (!truck || activeTruck) return;
 
       activeTruck = truck;
+      lastDashboardTruck = truck;
       keys.clear();
       velocity.set(0, 0, 0);
       truck.speed = 0;
@@ -5035,47 +5899,50 @@
         dockRingMat.opacity = 0.5 + dockPulse * 0.28;
       }
 
-      if (activeTruck) {
-        updateActiveTruck(dt);
-      } else if (activeForklift) {
-        updateActiveForklift(dt);
-      } else {
-        // First-person movement: horizontal only, relative to camera yaw.
-        const yaw = camera.rotation.y;
-        forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
-        right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+      if (!dashboardOpen) {
+        if (activeTruck) {
+          updateActiveTruck(dt);
+        } else if (activeForklift) {
+          updateActiveForklift(dt);
+        } else {
+          // First-person movement: horizontal only, relative to camera yaw.
+          const yaw = camera.rotation.y;
+          forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+          right.set(Math.cos(yaw), 0, -Math.sin(yaw));
 
-        wish.set(0, 0, 0);
-        if (inputActive()) {
-          const moveForward = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
-          const moveRight = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
-          wish.addScaledVector(forward, moveForward);
-          wish.addScaledVector(right, moveRight);
-          if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(MOVE_SPEED);
-        }
+          wish.set(0, 0, 0);
+          if (inputActive()) {
+            const moveForward = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0);
+            const moveRight = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
+            wish.addScaledVector(forward, moveForward);
+            wish.addScaledVector(right, moveRight);
+            if (wish.lengthSq() > 0) wish.normalize().multiplyScalar(MOVE_SPEED);
+          }
 
-        velocity.x = THREE.MathUtils.damp(velocity.x, wish.x, 12, dt);
-        velocity.z = THREE.MathUtils.damp(velocity.z, wish.z, 12, dt);
+          velocity.x = THREE.MathUtils.damp(velocity.x, wish.x, 12, dt);
+          velocity.z = THREE.MathUtils.damp(velocity.z, wish.z, 12, dt);
 
-        const previousX = camera.position.x;
-        const previousZ = camera.position.z;
+          const previousX = camera.position.x;
+          const previousZ = camera.position.z;
 
-        camera.position.x += velocity.x * dt;
-        camera.position.z += velocity.z * dt;
-        camera.position.y = EYE_HEIGHT;
+          camera.position.x += velocity.x * dt;
+          camera.position.z += velocity.z * dt;
+          camera.position.y = EYE_HEIGHT;
 
-        resolveSolidCollisions(camera.position);
-        camera.position.x = THREE.MathUtils.clamp(camera.position.x, WORLD.minX, WORLD.maxX);
-        camera.position.z = THREE.MathUtils.clamp(camera.position.z, WORLD.minZ, WORLD.maxZ);
+          resolveSolidCollisions(camera.position);
+          camera.position.x = THREE.MathUtils.clamp(camera.position.x, WORLD.minX, WORLD.maxX);
+          camera.position.z = THREE.MathUtils.clamp(camera.position.z, WORLD.minZ, WORLD.maxZ);
 
-        if (pointInTruck(camera.position.x, camera.position.z, PLAYER_RADIUS)) {
-          camera.position.x = previousX;
-          camera.position.z = previousZ;
-          velocity.x = 0;
-          velocity.z = 0;
+          if (pointInTruck(camera.position.x, camera.position.z, PLAYER_RADIUS)) {
+            camera.position.x = previousX;
+            camera.position.z = previousZ;
+            velocity.x = 0;
+            velocity.z = 0;
+          }
         }
       }
 
+      updateDashboard(dt);
       updateFreightPrompt();
       updateForklift(dt);
       updateGasStations(dt);
@@ -5105,6 +5972,10 @@
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      if (dashboardOpen) {
+        resizeDashboardCanvases();
+        drawDashboard();
+      }
     });
 
     /* ------------------------------------------------------------------ */
