@@ -217,9 +217,59 @@ node server.mjs
 
 > Three.js 与 addons 通过 GCore jsDelivr 镜像加载，需要联网。
 
+## 安全与本地配置
+
+当前版本是纯前端静态页面 + 零依赖静态服务器：
+
+- 代码中**没有** DeepSeek/OpenAI API Key、GitHub Token、数据库连接串或 Supabase `service_role` 密钥
+- 浏览器端只加载本地资源和 Three.js CDN，不调用需要密钥的 API
+- `server.mjs` 只读取可选的 `PORT` 环境变量
+
+### 可选的环境变量
+
+复制模板：
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Node.js 20.6+ 可以用 `--env-file` 读取本地 `.env`：
+
+```powershell
+node --env-file=.env server.mjs
+```
+
+或者直接设置环境变量，例如：
+
+```powershell
+$env:PORT=5178
+node server.mjs
+```
+
+`.env` 已被 `.gitignore` 忽略，`.env.example` 只包含占位符。
+
+### 如果以后接入 DeepSeek
+
+不要把 DeepSeek Key 写进 `index.html`、浏览器 JS 或任何公开构建产物。应当由服务端读取：
+
+```js
+const apiKey = process.env.DEEPSEEK_API_KEY;
+```
+
+前端只请求自己的后端接口，由后端代调用 DeepSeek。真实 Key 只放在本地 `.env` 或部署平台的 Secret 中。
+
+### 如果以后接入 Supabase
+
+- 前端可以公开使用 `SUPABASE_ANON_KEY`，但必须配合 Row Level Security 策略
+- **绝对不要**把 `SUPABASE_SERVICE_ROLE_KEY` 放进前端、GitHub、公开构建产物或 `.env.example`
+- 需要 service_role 的操作只能放在私有服务端，并通过 `process.env.SUPABASE_SERVICE_ROLE_KEY` 读取
+- 当前项目没有写入任何 Supabase 密钥
+
 ## 文件结构
 
 ```
+.env.example
+.gitignore
 index.html
 server.mjs
 assets/

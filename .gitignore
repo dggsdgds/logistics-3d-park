@@ -1,3 +1,54 @@
+# Dependencies and build output
 node_modules/
-.DS_Store
+dist/
+build/
+coverage/
+.cache/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+*.local.*
+config.local.*
+harness.local.json
+secrets/
+.secrets/
+*service-role*
+*service_role*
+
+# Credentials and private keys
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+.ssh/
+.npmrc
+.yarnrc
+.pnpmrc
+.netrc
+.git-credentials
+
+# Logs and temporary files
 *.log
+npm-debug.log*
+pnpm-debug.log*
+*.tmp
+*.bak
+*.save
+
+# Python / Blender
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / editor / local tooling
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+.dsh/

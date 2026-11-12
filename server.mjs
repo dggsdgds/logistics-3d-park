@@ -29,6 +29,17 @@ const server = http.createServer(async (req, res) => {
     let pathname = decodeURIComponent(url.pathname);
     if (pathname === '/' || pathname === '') pathname = '/index.html';
 
+    // Never expose dotfiles such as .env, .git credentials or local config.
+    const segments = pathname.split('/');
+    if (segments.some((segment) => segment.startsWith('.') && segment !== '')) {
+      res.writeHead(404, {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff'
+      });
+      res.end('Not found');
+      return;
+    }
+
     const filePath = path.resolve(root, '.' + pathname);
     if (filePath !== root && !filePath.startsWith(root + path.sep)) {
       res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -42,7 +53,9 @@ const server = http.createServer(async (req, res) => {
     const data = await readFile(filePath);
     res.writeHead(200, {
       'Content-Type': MIME[path.extname(filePath).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'no-store'
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'no-referrer'
     });
     res.end(data);
   } catch {
