@@ -1395,6 +1395,13 @@
     const FATIGUE_LIMIT = 120;
 
     const colliders = [];
+    const cameraOccluders = [];
+    const forkliftCameraRaycaster = new THREE.Raycaster();
+    const forkliftCameraAnchor = new THREE.Vector3();
+    const forkliftCameraDesired = new THREE.Vector3();
+    const forkliftCameraDirection = new THREE.Vector3();
+    const forkliftCameraSafePoint = new THREE.Vector3();
+    const forkliftCameraLocalTarget = new THREE.Vector3();
 
     const lockOverlay = document.getElementById('lockOverlay');
     const lockTitle = lockOverlay.querySelector('h2');
@@ -2462,7 +2469,7 @@
 
         const driveGroup = new THREE.Group();
         driveGroup.position.set(-5.2, 0.02, 59.8);
-        driveGroup.rotation.y = 0;
+        driveGroup.rotation.y = Math.PI;
         driveGroup.add(driveModel);
 
         const driveMount = new THREE.Group();
@@ -2495,6 +2502,7 @@
         drivableForklift.forks = driveForks;
         drivableForklift.forksBaseY = driveForks ? driveForks.position.y : 0;
         drivableForklift.wheels = driveWheels;
+        drivableForklift.heading = Math.PI;
         drivableForklift.ready = true;
         scene.add(driveGroup);
 
@@ -3092,6 +3100,7 @@
           mesh.instanceMatrix.needsUpdate = true;
           if (isBody) mesh.instanceColor.needsUpdate = true;
           scene.add(mesh);
+          if (isBody) cameraOccluders.push(mesh);
           return mesh;
         };
 
@@ -3191,6 +3200,7 @@
           mesh.instanceMatrix.needsUpdate = true;
           if (!part.isHardware) mesh.instanceColor.needsUpdate = true;
           scene.add(mesh);
+          if (!part.isHardware) cameraOccluders.push(mesh);
         }
 
         renderer.shadowMap.needsUpdate = true;
@@ -3275,6 +3285,7 @@
           });
 
           scene.add(group);
+          cameraOccluders.push(group);
           trucks.push({
             group,
             mount,
@@ -3296,6 +3307,135 @@
       }
     })();
 
+    const WAREHOUSE = { x: 0, z: 83, w: 16, d: 14 };
+    const FORKLIFT_STAGING = { x: 0, z: 70.6 };
+
+    function makeWarehouseSignTexture() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024;
+      canvas.height = 256;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#111a20';
+      ctx.fillRect(0, 0, 1024, 256);
+      ctx.strokeStyle = '#5ad1ff';
+      ctx.lineWidth = 5;
+      ctx.strokeRect(12, 12, 1000, 232);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(90, 209, 255, 0.7)';
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = '#eaf8ff';
+      ctx.font = '700 96px "Microsoft YaHei", "Segoe UI", sans-serif';
+      ctx.fillText('锦州港仓储中心', 512, 105);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#8fd7ff';
+      ctx.font = '500 42px "Bahnschrift", "Segoe UI", sans-serif';
+      ctx.fillText('JINZHOU PORT  ·  WAREHOUSE 01', 512, 198);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = anisotropy;
+      return texture;
+    }
+
+    const warehouseGroup = new THREE.Group();
+    warehouseGroup.position.set(WAREHOUSE.x, 0, WAREHOUSE.z);
+
+    const warehouseConcreteMat = new THREE.MeshStandardMaterial({
+      color: 0x3f464d,
+      roughness: 0.92,
+      metalness: 0.05
+    });
+    const warehouseWallMat = new THREE.MeshStandardMaterial({
+      color: 0x7d858b,
+      roughness: 0.72,
+      metalness: 0.35
+    });
+    const warehouseRoofMat = new THREE.MeshStandardMaterial({
+      color: 0x4c565d,
+      roughness: 0.68,
+      metalness: 0.4
+    });
+    const warehouseTrimMat = new THREE.MeshStandardMaterial({
+      color: 0xc99a34,
+      roughness: 0.55,
+      metalness: 0.35
+    });
+
+    const warehouseFloor = new THREE.Mesh(
+      new THREE.BoxGeometry(WAREHOUSE.w, 0.12, WAREHOUSE.d),
+      warehouseConcreteMat
+    );
+    warehouseFloor.position.y = 0.06;
+    warehouseFloor.receiveShadow = true;
+    warehouseGroup.add(warehouseFloor);
+
+    const warehouseBack = new THREE.Mesh(
+      new THREE.BoxGeometry(WAREHOUSE.w, 6, 0.35),
+      warehouseWallMat
+    );
+    warehouseBack.position.set(0, 3, WAREHOUSE.d / 2 - 0.18);
+    warehouseGroup.add(warehouseBack);
+
+    for (const side of [-1, 1]) {
+      const sideWall = new THREE.Mesh(
+        new THREE.BoxGeometry(0.35, 6, WAREHOUSE.d),
+        warehouseWallMat
+      );
+      sideWall.position.set(side * (WAREHOUSE.w / 2 - 0.18), 3, 0);
+      warehouseGroup.add(sideWall);
+
+      const frontStub = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 6, 0.35),
+        warehouseWallMat
+      );
+      frontStub.position.set(side * (WAREHOUSE.w / 2 - 1), 3, -WAREHOUSE.d / 2 + 0.18);
+      warehouseGroup.add(frontStub);
+    }
+
+    const warehouseHeader = new THREE.Mesh(
+      new THREE.BoxGeometry(WAREHOUSE.w, 1.2, 0.35),
+      warehouseTrimMat
+    );
+    warehouseHeader.position.set(0, 5.4, -WAREHOUSE.d / 2 + 0.18);
+    warehouseGroup.add(warehouseHeader);
+
+    const warehouseRoof = new THREE.Mesh(
+      new THREE.BoxGeometry(WAREHOUSE.w + 0.8, 0.28, WAREHOUSE.d + 0.8),
+      warehouseRoofMat
+    );
+    warehouseRoof.position.y = 6.14;
+    warehouseGroup.add(warehouseRoof);
+
+    const warehouseSign = new THREE.Mesh(
+      new THREE.PlaneGeometry(7.2, 1.8),
+      new THREE.MeshBasicMaterial({
+        map: makeWarehouseSignTexture(),
+        transparent: true,
+        toneMapped: false
+      })
+    );
+    warehouseSign.position.set(0, 4.75, -WAREHOUSE.d / 2 - 0.03);
+    warehouseSign.rotation.y = Math.PI;
+    warehouseGroup.add(warehouseSign);
+
+    const warehouseStripe = new THREE.Mesh(
+      new THREE.BoxGeometry(10.6, 0.03, 0.6),
+      new THREE.MeshBasicMaterial({ color: 0xd8ae3c, toneMapped: false })
+    );
+    warehouseStripe.position.set(0, 0.035, -WAREHOUSE.d / 2 - 0.8);
+    warehouseGroup.add(warehouseStripe);
+
+    scene.add(warehouseGroup);
+    cameraOccluders.push(warehouseGroup);
+
+    colliders.push(
+      { minX: -WAREHOUSE.w / 2, maxX: WAREHOUSE.w / 2, minZ: WAREHOUSE.d / 2 - 0.4, maxZ: WAREHOUSE.d / 2 + 0.2 },
+      { minX: -WAREHOUSE.w / 2 - 0.2, maxX: -WAREHOUSE.w / 2 + 0.2, minZ: -WAREHOUSE.d / 2, maxZ: WAREHOUSE.d / 2 },
+      { minX: WAREHOUSE.w / 2 - 0.2, maxX: WAREHOUSE.w / 2 + 0.2, minZ: -WAREHOUSE.d / 2, maxZ: WAREHOUSE.d / 2 },
+      { minX: -WAREHOUSE.w / 2, maxX: -WAREHOUSE.w / 2 + 2, minZ: -WAREHOUSE.d / 2 - 0.2, maxZ: -WAREHOUSE.d / 2 + 0.2 },
+      { minX: WAREHOUSE.w / 2 - 2, maxX: WAREHOUSE.w / 2, minZ: -WAREHOUSE.d / 2 - 0.2, maxZ: -WAREHOUSE.d / 2 + 0.2 }
+    );
+
     /* ------------------------------------------------------------------ */
     /*  Pallet logistics with a drivable forklift                          */
     /* ------------------------------------------------------------------ */
@@ -3316,9 +3456,14 @@
     ];
 
     const PALLET_HOMES = [
-      { x: -2.6, z: 58.6, heading: 0 },
-      { x: 0.1, z: 58.6, heading: 0 },
-      { x: -5.5, z: 57.0, heading: 0 }
+      { x: -5.2, z: 72.4, heading: Math.PI, entryHeading: Math.PI },
+      { x: -1.8, z: 72.4, heading: Math.PI, entryHeading: Math.PI },
+      { x: 1.8, z: 72.4, heading: Math.PI, entryHeading: Math.PI },
+      { x: 5.2, z: 72.4, heading: Math.PI, entryHeading: Math.PI },
+      { x: -5.2, z: 74.1, heading: Math.PI, entryHeading: Math.PI },
+      { x: -1.8, z: 74.1, heading: Math.PI, entryHeading: Math.PI },
+      { x: 1.8, z: 74.1, heading: Math.PI, entryHeading: Math.PI },
+      { x: 5.2, z: 74.1, heading: Math.PI, entryHeading: Math.PI }
     ];
 
     function createPallet(index) {
@@ -3380,6 +3525,7 @@
         id: `P${index + 1}`,
         group,
         home: { x: home.x, z: home.z, heading: home.heading },
+        entryHeading: home.entryHeading,
         delivered: false,
         bound: false
       };
@@ -3474,15 +3620,28 @@
 
     function isPalletAligned(pallet) {
       if (!pallet || !activeForklift) return false;
+
+      const entryHeading = pallet.entryHeading || 0;
       const dx = activeForklift.group.position.x - pallet.group.position.x;
       const dz = activeForklift.group.position.z - pallet.group.position.z;
-      const heading = Math.atan2(
-        Math.sin(activeForklift.heading),
-        Math.cos(activeForklift.heading)
+
+      // "back" is the direction the forklift should stand relative to the
+      // pallet, opposite the fork direction for this pallet.
+      const backX = Math.sin(entryHeading);
+      const backZ = Math.cos(entryHeading);
+      const rightX = Math.cos(entryHeading);
+      const rightZ = -Math.sin(entryHeading);
+      const back = dx * backX + dz * backZ;
+      const lateral = dx * rightX + dz * rightZ;
+
+      const headingError = Math.atan2(
+        Math.sin(activeForklift.heading - entryHeading),
+        Math.cos(activeForklift.heading - entryHeading)
       );
-      return Math.abs(dx) < 1.0 &&
-        dz > 1.45 && dz < 3.8 &&
-        Math.abs(heading) < 0.3;
+
+      return Math.abs(lateral) < 1.0 &&
+        back > 1.45 && back < 3.8 &&
+        Math.abs(headingError) < 0.3;
     }
 
     function makeForkliftJobId() {
@@ -3519,8 +3678,11 @@
         palletLabel = '已入库';
       } else if (activePallet) {
         palletLabel = activePallet.id;
+      } else if (forkliftJob.stage === 'pickup') {
+        palletLabel = '仓库提货';
       }
-      let stageLabel = '待插取';
+
+      let stageLabel = '前往仓库';
       let stageClass = 'pickup';
 
       if (forkliftJob.stage === 'carrying') {
@@ -3531,11 +3693,13 @@
         stageClass = 'forklift';
       }
 
+      const targetLabel = target ? target.area : '待分配';
+
       orderNumber.textContent = `叉车作业单 ${forkliftJob.id}`;
       missionText.innerHTML =
-        `当前任务：<b class="order-warehouse">[托盘 ${palletLabel}]</b>` +
+        `当前任务：<b class="order-warehouse">[${palletLabel}]</b>` +
         ` <span class="order-arrow">→</span> ` +
-        `<b class="order-dock">[目标集装箱 ${target.area}]</b>`;
+        `<b class="order-dock">[目标集装箱 ${targetLabel}]</b>`;
       orderStageLabel.textContent = stageLabel;
       orderStageLabel.className = `mission-stage ${stageClass}`;
     }
@@ -3556,15 +3720,15 @@
       if (!available) resetForkliftPallets();
 
       forkliftJobCounter += 1;
-      forkliftTarget = pickForkliftTarget();
+      forkliftTarget = null;
       forkliftJob = {
         id: makeForkliftJobId(),
-        target: forkliftTarget,
+        target: null,
         stage: 'pickup'
       };
       activePallet = null;
       drivableForklift.hasLoad = false;
-      placeForkliftTarget(forkliftTarget);
+      jobGroup.visible = false;
       if (activeForklift) renderForkliftJobHud();
     }
 
@@ -3573,7 +3737,7 @@
 
       const pallet = findNearestPallet();
       if (!pallet) {
-        showToast('请把叉车开到托盘正前方', 'PALLET NOT FOUND');
+        showToast('请把叉车开到仓库门口托盘前', 'PALLET NOT FOUND');
         return;
       }
       if (!isPalletAligned(pallet)) {
@@ -3594,9 +3758,14 @@
       pallet.group.position.set(0, -0.145, -0.63);
       pallet.group.rotation.set(0, 0, 0);
 
-      if (forkliftJob) forkliftJob.stage = 'carrying';
+      // The destination is chosen only after the pallet is on the forks.
+      forkliftTarget = pickForkliftTarget();
+      forkliftJob.target = forkliftTarget;
+      placeForkliftTarget(forkliftTarget);
+      forkliftJob.stage = 'carrying';
+
       renderForkliftJobHud();
-      showToast('插取成功，重载行驶', 'PALLET ENGAGED');
+      showToast('插取成功，目标集装箱已分配', 'PALLET ENGAGED');
     }
 
     function releasePallet() {
@@ -4095,6 +4264,46 @@
       // The follow camera is deliberately locked: the forklift stays in the
       // middle of the screen and mouse movement cannot swing the view.
       camera.rotation.set(0, 0, 0);
+
+      // Camera collision: cast from the forklift body to the preferred camera
+      // point. If a container, warehouse wall/roof or truck is in the way,
+      // pull the camera in front of it; otherwise smoothly return to the
+      // original follow distance.
+      drivableForklift.group.updateMatrixWorld(true);
+      drivableForklift.mount.updateMatrixWorld(true);
+
+      forkliftCameraAnchor.set(0, 2.4, 0);
+      drivableForklift.group.localToWorld(forkliftCameraAnchor);
+      drivableForklift.mount.getWorldPosition(forkliftCameraDesired);
+
+      forkliftCameraDirection.subVectors(forkliftCameraDesired, forkliftCameraAnchor);
+      const desiredDistance = forkliftCameraDirection.length();
+      if (desiredDistance > 0.001 && cameraOccluders.length) {
+        forkliftCameraDirection.multiplyScalar(1 / desiredDistance);
+        forkliftCameraRaycaster.set(forkliftCameraAnchor, forkliftCameraDirection);
+        forkliftCameraRaycaster.far = desiredDistance;
+
+        const hits = forkliftCameraRaycaster.intersectObjects(cameraOccluders, true);
+        const nearest = hits.find((hit) => hit.distance > 0.15);
+
+        if (nearest) {
+          const safeDistance = Math.max(0.2, nearest.distance - 0.4);
+          forkliftCameraSafePoint.copy(forkliftCameraAnchor)
+            .addScaledVector(forkliftCameraDirection, safeDistance);
+          forkliftCameraLocalTarget.copy(
+            drivableForklift.mount.worldToLocal(forkliftCameraSafePoint)
+          );
+          camera.position.copy(forkliftCameraLocalTarget);
+        } else {
+          camera.position.x = THREE.MathUtils.damp(camera.position.x, 0, 8, dt);
+          camera.position.y = THREE.MathUtils.damp(camera.position.y, 0, 8, dt);
+          camera.position.z = THREE.MathUtils.damp(camera.position.z, 0, 8, dt);
+        }
+      } else {
+        camera.position.x = THREE.MathUtils.damp(camera.position.x, 0, 8, dt);
+        camera.position.y = THREE.MathUtils.damp(camera.position.y, 0, 8, dt);
+        camera.position.z = THREE.MathUtils.damp(camera.position.z, 0, 8, dt);
+      }
     }
 
     function toggleTruck() {
@@ -4400,7 +4609,7 @@
 
     function updateMinimapPath(dt) {
       const forkliftActiveJob = !!(
-        activeForklift && forkliftJob && forkliftTarget &&
+        activeForklift && forkliftJob &&
         forkliftJob.stage !== 'done'
       );
 
@@ -4423,7 +4632,7 @@
       pathAccumulator += dt;
 
       const key = forkliftActiveJob
-        ? `forklift:${forkliftJob.id}`
+        ? `forklift:${forkliftJob.id}:${forkliftTarget ? forkliftTarget.area : 'warehouse'}`
         : `${orderId}:${orderStage}:${currentWarehouseIndex}:${currentDock ? currentDock.id : ''}`;
       if (lastPathTargetKey === key &&
           Math.hypot(px - lastPathX, pz - lastPathZ) < 2) {
@@ -4436,7 +4645,9 @@
       lastPathX = px;
       lastPathZ = pz;
       const goal = forkliftActiveJob
-        ? { x: forkliftTarget.accessX, z: forkliftTarget.z }
+        ? forkliftTarget
+          ? { x: forkliftTarget.accessX, z: forkliftTarget.z }
+          : FORKLIFT_STAGING
         : getMissionNavGoal();
       if (!goal) {
         currentPath = [];
@@ -4672,6 +4883,27 @@
           worldToMapY(currentDock.z),
           missionActive && orderStage === 'delivery'
         );
+      }
+
+      if (forkliftJob && !forkliftTarget && forkliftJob.stage !== 'done') {
+        const wx = worldToMapX(WAREHOUSE.x);
+        const wy = worldToMapY(WAREHOUSE.z);
+        ctx.save();
+        ctx.fillStyle = '#2f5d75';
+        ctx.fillRect(wx - 9, wy - 7, 18, 14);
+        ctx.strokeStyle = '#8fd7ff';
+        ctx.lineWidth = 1.8;
+        ctx.strokeRect(wx - 9, wy - 7, 18, 14);
+        ctx.beginPath();
+        ctx.moveTo(wx - 11, wy - 7);
+        ctx.lineTo(wx, wy - 14);
+        ctx.lineTo(wx + 11, wy - 7);
+        ctx.closePath();
+        ctx.fillStyle = '#8fd7ff';
+        ctx.fill();
+        ctx.fillStyle = '#07151f';
+        ctx.fillRect(wx - 3, wy - 1, 6, 8);
+        ctx.restore();
       }
 
       if (forkliftTarget && forkliftJob && forkliftJob.stage !== 'done') {
