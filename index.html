@@ -1129,7 +1129,7 @@
         <span>叉车 · FORKLIFT</span>
         <span>货叉 <b id="forkLiftValue">0.00</b> m</span>
       </div>
-      <div class="forklift-tip">方向键驾驶 &nbsp;·&nbsp; <kbd>F</kbd> 升降货叉 &nbsp;·&nbsp; <kbd>E</kbd> 下车</div>
+      <div class="forklift-tip">跟车视角锁定 &nbsp;·&nbsp; 方向键驾驶 &nbsp;·&nbsp; <kbd>F</kbd> 升降货叉 &nbsp;·&nbsp; <kbd>E</kbd> 下车</div>
     </div>
 
     <div class="speed-panel">
@@ -1316,7 +1316,7 @@
     const CRATE_PICKUP_RANGE = 4.2;
     const FORK_LOCAL_Z = -1.85;
     const FORK_PLATFORM_BASE_Y = 0.36;
-    const FORK_TRAVEL = 0.9;
+    const FORK_TRAVEL = 1.8;
 
     const MOVE_SPEED = 6.2;
     const PLAYER_RADIUS = 0.42;
@@ -2384,8 +2384,8 @@
         driveGroup.add(driveModel);
 
         const driveMount = new THREE.Group();
-        driveMount.position.set(4.9, 3.7, 5.2);
-        driveMount.rotation.set(-0.32, Math.PI / 4, 0);
+        driveMount.position.set(0, 4.8, 8.2);
+        driveMount.rotation.x = -0.34;
         driveGroup.add(driveMount);
 
         const blob = new THREE.Mesh(
@@ -3978,9 +3978,9 @@
 
       const forkTarget = forklift.forkTarget;
       if (forklift.forkLift < forkTarget) {
-        forklift.forkLift = Math.min(forkTarget, forklift.forkLift + 0.58 * dt);
+        forklift.forkLift = Math.min(forkTarget, forklift.forkLift + 1.0 * dt);
       } else if (forklift.forkLift > forkTarget) {
-        forklift.forkLift = Math.max(forkTarget, forklift.forkLift - 0.58 * dt);
+        forklift.forkLift = Math.max(forkTarget, forklift.forkLift - 1.0 * dt);
       }
       if (forklift.forks) {
         forklift.forks.position.y = forklift.forksBaseY + forklift.forkLift * FORK_TRAVEL;
@@ -3994,6 +3994,10 @@
       for (const wheel of forklift.wheels) {
         wheel.rotation.x += forklift.speed * dt * 2.2;
       }
+
+      // The follow camera is deliberately locked: the forklift stays in the
+      // middle of the screen and mouse movement cannot swing the view.
+      camera.rotation.set(0, 0, 0);
     }
 
     function toggleTruck() {      if (!inputActive()) return;
