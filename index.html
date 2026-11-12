@@ -506,6 +506,49 @@
     width: 158px;
     text-align: right;
   }
+  .tms-panel.forklift {
+    left: 36px;
+    width: 286px;
+    display: none;
+    border-color: rgba(255, 198, 60, 0.24);
+  }
+  body.forklift .tms-panel.fuel,
+  body.forklift .tms-panel.drive {
+    display: none;
+  }
+  body.forklift .tms-panel.forklift {
+    display: block;
+  }
+  .forklift-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    color: #ffcf4a;
+    font-size: 10px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+  }
+  .forklift-head b {
+    font-size: 15px;
+    letter-spacing: .04em;
+    color: #fff1bd;
+    font-variant-numeric: tabular-nums;
+  }
+  .forklift-tip {
+    margin-top: 5px;
+    color: #8b7d59;
+    font-size: 9px;
+    letter-spacing: .12em;
+  }
+  .forklift-tip kbd {
+    margin: 0 3px;
+    padding: 1px 4px;
+    border: 1px solid rgba(255, 205, 74, .35);
+    color: #ffcf4a;
+    background: rgba(255, 205, 74, .06);
+    font-size: 9px;
+  }
   .tms-head {
     display: flex;
     align-items: baseline;
@@ -1036,7 +1079,7 @@
   </div>
 
   <footer class="footer">
-    <div class="hint" id="footerHint"><b>W A S D</b> 移动 &nbsp;·&nbsp; <b>鼠标</b> 环视 &nbsp;·&nbsp; <b>ESC</b> 释放鼠标</div>
+    <div class="hint" id="footerHint"><b>W A S D</b> 移动 &nbsp;·&nbsp; <b>E</b> 互动 &nbsp;·&nbsp; <b>F</b> 搬运/货叉 &nbsp;·&nbsp; <b>鼠标</b> 环视 &nbsp;·&nbsp; <b>ESC</b> 释放鼠标</div>
     <div class="meta">40FT Containers <span id="containerCount">—</span><br>Instanced <span>4 DRAWS</span></div>
   </footer>
 
@@ -1079,6 +1122,14 @@
     <div class="tms-panel drive">
       <div class="tms-head"><span>连续驾驶</span></div>
       <div id="driveTimeValue">00:00</div>
+    </div>
+
+    <div class="tms-panel forklift">
+      <div class="forklift-head">
+        <span>叉车 · FORKLIFT</span>
+        <span>货叉 <b id="forkLiftValue">0.00</b> m</span>
+      </div>
+      <div class="forklift-tip">方向键驾驶 &nbsp;·&nbsp; <kbd>F</kbd> 升降货叉 &nbsp;·&nbsp; <kbd>E</kbd> 下车</div>
     </div>
 
     <div class="speed-panel">
@@ -1141,7 +1192,8 @@
   {
     "imports": {
       "three": "https://gcore.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-      "three/addons/": "https://gcore.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+      "three/addons/": "https://gcore.jsdelivr.net/npm/three@0.169.0/examples/jsm/",
+      "cannon-es": "https://gcore.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"
     }
   }
   </script>
@@ -1151,6 +1203,7 @@
     import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
     import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import * as CANNON from 'cannon-es';
 
     const EYE_HEIGHT = 1.7;
     const CONTAINER = { w: 2.44, h: 2.59, l: 12.19 };
@@ -1235,6 +1288,36 @@
     let activeTruck = null;
     let nearestTruck = null;
 
+    const drivableForklift = {
+      group: null,
+      mount: null,
+      forks: null,
+      forksBaseY: 0,
+      ready: false,
+      heading: 0,
+      speed: 0,
+      forkLift: 0,
+      forkTarget: 0,
+      wheels: []
+    };
+    let activeForklift = null;
+    let nearestForklift = null;
+
+    const crateObjects = [];
+    let heldCrate = null;
+    let aimedCrate = null;
+    let physicsWorld = null;
+    let forkPlatformBody = null;
+    let forkBackBody = null;
+    let forkPlatformReady = false;
+
+    const CRATE_SIZE = 0.84;
+    const CRATE_MASS = 6;
+    const CRATE_PICKUP_RANGE = 4.2;
+    const FORK_LOCAL_Z = -1.85;
+    const FORK_PLATFORM_BASE_Y = 0.36;
+    const FORK_TRAVEL = 0.9;
+
     const MOVE_SPEED = 6.2;
     const PLAYER_RADIUS = 0.42;
     const FATIGUE_LIMIT = 120;
@@ -1252,6 +1335,7 @@
     const statusLabel = document.getElementById('statusLabel');
     const speedValue = document.getElementById('speedValue');
     const steeringWheel = document.getElementById('steeringWheel');
+    const forkLiftValue = document.getElementById('forkLiftValue');
     const missionText = document.getElementById('missionText');
     const orderNumber = document.getElementById('orderNumber');
     const orderStageLabel = document.getElementById('missionStage');
@@ -1279,6 +1363,7 @@
     let steeringVisual = 0;
     const WALK_HINT = footerHint.innerHTML;
     const DRIVE_HINT = '<b>↑ ↓</b> 加速/倒车 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>E</b> 下车';
+    const FORKLIFT_HINT = '<b>↑ ↓</b> 驾驶 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>F</b> 升降货叉 &nbsp;·&nbsp; <b>E</b> 下车';
 
     let fallbackMode = false;
     let lockAttemptTimer = null;
@@ -1418,7 +1503,7 @@
       if (event.code === 'KeyE') {
         if (!event.repeat) {
           event.preventDefault();
-          toggleTruck();
+          handleInteract();
         }
         return;
       }
@@ -1426,12 +1511,12 @@
       if (event.code === 'KeyF') {
         if (!event.repeat) {
           event.preventDefault();
-          handleFreightAction();
+          handleActionF();
         }
         return;
       }
 
-      if (activeTruck) {
+      if (activeTruck || activeForklift) {
         if (event.code === 'ArrowUp' || event.code === 'ArrowDown' ||
             event.code === 'ArrowLeft' || event.code === 'ArrowRight') {
           keys.add(event.code);
@@ -1451,6 +1536,7 @@
     window.addEventListener('blur', () => {
       keys.clear();
       if (activeTruck) activeTruck.speed = 0;
+      if (activeForklift) activeForklift.speed = 0;
     });
 
     function resolveSolidCollisions(position) {
@@ -2280,9 +2366,56 @@
           node.castShadow = false;
           node.receiveShadow = true;
         });
+
+        const driveModel = model.clone(true);
+        driveModel.traverse((node) => {
+          if (!node.isMesh) return;
+          node.castShadow = false;
+          node.receiveShadow = true;
+        });
+
         forkliftRoot.add(model);
         forkliftForks = model.getObjectByName('ForkliftForks');
         if (forkliftForks) forkliftForksBaseY = forkliftForks.position.y;
+
+        const driveGroup = new THREE.Group();
+        driveGroup.position.set(-5.2, 0.02, 59.8);
+        driveGroup.rotation.y = 0;
+        driveGroup.add(driveModel);
+
+        const driveMount = new THREE.Group();
+        driveMount.position.set(4.9, 3.7, 5.2);
+        driveMount.rotation.set(-0.32, Math.PI / 4, 0);
+        driveGroup.add(driveMount);
+
+        const blob = new THREE.Mesh(
+          new THREE.PlaneGeometry(3.4, 1.9),
+          new THREE.MeshBasicMaterial({
+            map: makeBlobShadowTexture(),
+            transparent: true,
+            opacity: 0.5,
+            depthWrite: false,
+            toneMapped: false
+          })
+        );
+        blob.rotation.x = -Math.PI / 2;
+        blob.position.y = 0.018;
+        driveGroup.add(blob);
+
+        const driveForks = driveModel.getObjectByName('ForkliftForks');
+        const driveWheels = [];
+        driveModel.traverse((node) => {
+          if (/^Wheel/i.test(node.name)) driveWheels.push(node);
+        });
+
+        drivableForklift.group = driveGroup;
+        drivableForklift.mount = driveMount;
+        drivableForklift.forks = driveForks;
+        drivableForklift.forksBaseY = driveForks ? driveForks.position.y : 0;
+        drivableForklift.wheels = driveWheels;
+        drivableForklift.ready = true;
+        scene.add(driveGroup);
+
         forkliftAssetReady = true;
         console.log('[port] Blender forklift loaded');
       },
@@ -3081,6 +3214,386 @@
       }
     })();
 
+    /* ------------------------------------------------------------------ */
+    /*  Physical carry crates (Cannon-es)                                  */
+    /* ------------------------------------------------------------------ */
+    const carryRaycaster = new THREE.Raycaster();
+    const carryScreen = new THREE.Vector2(0, 0);
+    const forkliftTempVector = new THREE.Vector3();
+
+    const woodMat = new THREE.MeshStandardMaterial({
+      color: 0x9c6b3d,
+      roughness: 0.84,
+      metalness: 0.02
+    });
+    const woodBandMat = new THREE.MeshStandardMaterial({
+      color: 0x5b3a20,
+      roughness: 0.8,
+      metalness: 0.04
+    });
+
+    function createCrateMesh() {
+      const group = new THREE.Group();
+      const bodyMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(CRATE_SIZE, CRATE_SIZE, CRATE_SIZE),
+        woodMat
+      );
+      bodyMesh.castShadow = false;
+      bodyMesh.receiveShadow = false;
+      group.add(bodyMesh);
+
+      const edgeLines = new THREE.LineSegments(
+        new THREE.EdgesGeometry(bodyMesh.geometry),
+        new THREE.LineBasicMaterial({ color: 0x3a2412, transparent: true, opacity: 0.8 })
+      );
+      group.add(edgeLines);
+
+      for (const y of [-0.27, 0.27]) {
+        const band = new THREE.Mesh(
+          new THREE.BoxGeometry(CRATE_SIZE + 0.012, 0.055, CRATE_SIZE + 0.012),
+          woodBandMat
+        );
+        band.position.y = y;
+        group.add(band);
+      }
+
+      return group;
+    }
+
+    function initCratePhysics() {
+      physicsWorld = new CANNON.World({
+        gravity: new CANNON.Vec3(0, -9.82, 0)
+      });
+      physicsWorld.broadphase = new CANNON.SAPBroadphase(physicsWorld);
+      physicsWorld.allowSleep = true;
+      physicsWorld.solver.iterations = 12;
+      physicsWorld.defaultContactMaterial.friction = 0.48;
+
+      const groundPhysicsMat = new CANNON.Material('ground');
+      const cratePhysicsMat = new CANNON.Material('crate');
+      const forkPhysicsMat = new CANNON.Material('fork');
+
+      physicsWorld.addContactMaterial(new CANNON.ContactMaterial(
+        groundPhysicsMat, cratePhysicsMat,
+        { friction: 0.68, restitution: 0.03 }
+      ));
+      physicsWorld.addContactMaterial(new CANNON.ContactMaterial(
+        cratePhysicsMat, cratePhysicsMat,
+        { friction: 0.52, restitution: 0.12 }
+      ));
+      physicsWorld.addContactMaterial(new CANNON.ContactMaterial(
+        forkPhysicsMat, cratePhysicsMat,
+        { friction: 0.85, restitution: 0.02 }
+      ));
+
+      const groundBody = new CANNON.Body({
+        mass: 0,
+        material: groundPhysicsMat,
+        shape: new CANNON.Plane()
+      });
+      groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+      physicsWorld.addBody(groundBody);
+
+      const spawnPoints = [
+        [0.0, 0.6, 62.0],
+        [-1.65, 0.6, 61.35],
+        [1.7, 0.6, 61.5],
+        [0.2, 0.6, 60.25]
+      ];
+
+      for (const [x, y, z] of spawnPoints) {
+        const group = createCrateMesh();
+        group.position.set(x, y, z);
+        scene.add(group);
+
+        const body = new CANNON.Body({
+          mass: CRATE_MASS,
+          material: cratePhysicsMat,
+          position: new CANNON.Vec3(x, y, z)
+        });
+        body.addShape(new CANNON.Box(new CANNON.Vec3(
+          CRATE_SIZE / 2,
+          CRATE_SIZE / 2,
+          CRATE_SIZE / 2
+        )));
+        body.linearDamping = 0.12;
+        body.angularDamping = 0.38;
+        body.allowSleep = true;
+        body.sleepSpeedLimit = 0.18;
+        body.sleepTimeLimit = 0.7;
+        physicsWorld.addBody(body);
+
+        const crate = {
+          group,
+          body,
+          held: false,
+          onFork: false,
+          pendingForkAt: 0,
+          index: crateObjects.length
+        };
+        group.traverse((node) => {
+          node.userData.crate = crate;
+        });
+        crateObjects.push(crate);
+      }
+
+      forkPlatformBody = new CANNON.Body({
+        mass: 0,
+        type: CANNON.Body.KINEMATIC,
+        material: forkPhysicsMat
+      });
+      forkPlatformBody.addShape(new CANNON.Box(new CANNON.Vec3(0.9, 0.06, 0.8)));
+      forkPlatformBody.position.set(0, -20, 0);
+      forkPlatformBody.collisionResponse = true;
+      physicsWorld.addBody(forkPlatformBody);
+
+      forkBackBody = new CANNON.Body({
+        mass: 0,
+        type: CANNON.Body.KINEMATIC,
+        material: forkPhysicsMat
+      });
+      forkBackBody.addShape(new CANNON.Box(new CANNON.Vec3(0.9, 0.38, 0.06)));
+      forkBackBody.position.set(0, -20, 0);
+      forkBackBody.collisionResponse = true;
+      physicsWorld.addBody(forkBackBody);
+
+      forkPlatformReady = true;
+    }
+
+    initCratePhysics();
+
+    function updateForkliftForkBodies() {
+      if (!forkPlatformBody || !forkBackBody) return;
+
+      if (!drivableForklift.group) {
+        forkPlatformBody.position.set(0, -20, 0);
+        forkBackBody.position.set(0, -20, 0);
+        return;
+      }
+
+      const liftY = FORK_PLATFORM_BASE_Y + drivableForklift.forkLift * FORK_TRAVEL;
+      const group = drivableForklift.group;
+
+      forkliftTempVector.set(0, liftY, FORK_LOCAL_Z);
+      group.localToWorld(forkliftTempVector);
+      forkPlatformBody.position.set(forkliftTempVector.x, forkliftTempVector.y, forkliftTempVector.z);
+      forkPlatformBody.quaternion.set(
+        group.quaternion.x, group.quaternion.y, group.quaternion.z, group.quaternion.w
+      );
+      forkPlatformBody.aabbNeedsUpdate = true;
+
+      forkliftTempVector.set(0, liftY + 0.38, FORK_LOCAL_Z + 0.75);
+      group.localToWorld(forkliftTempVector);
+      forkBackBody.position.set(forkliftTempVector.x, forkliftTempVector.y, forkliftTempVector.z);
+      forkBackBody.quaternion.set(
+        group.quaternion.x, group.quaternion.y, group.quaternion.z, group.quaternion.w
+      );
+      forkBackBody.aabbNeedsUpdate = true;
+    }
+
+    function updateCrateOnFork(crate) {
+      if (!drivableForklift.group) return;
+
+      const liftY = FORK_PLATFORM_BASE_Y + drivableForklift.forkLift * FORK_TRAVEL;
+      forkliftTempVector.set(0, liftY + CRATE_SIZE / 2 + 0.07, FORK_LOCAL_Z);
+      drivableForklift.group.localToWorld(forkliftTempVector);
+
+      crate.body.position.set(forkliftTempVector.x, forkliftTempVector.y, forkliftTempVector.z);
+      crate.body.quaternion.set(
+        drivableForklift.group.quaternion.x,
+        drivableForklift.group.quaternion.y,
+        drivableForklift.group.quaternion.z,
+        drivableForklift.group.quaternion.w
+      );
+      crate.group.position.copy(crate.body.position);
+      crate.group.quaternion.copy(drivableForklift.group.quaternion);
+    }
+
+    function attachCrateToFork(crate) {
+      if (!crate || crate.held || !drivableForklift.group) return;
+
+      crate.onFork = true;
+      crate.pendingForkAt = 0;
+      crate.body.type = CANNON.Body.KINEMATIC;
+      crate.body.mass = 0;
+      crate.body.updateMassProperties();
+      crate.body.velocity.set(0, 0, 0);
+      crate.body.angularVelocity.set(0, 0, 0);
+      crate.body.collisionResponse = false;
+      updateCrateOnFork(crate);
+    }
+
+    function updateCratePhysics(dt) {
+      if (!physicsWorld) return;
+
+      updateForkliftForkBodies();
+
+      const now = performance.now();
+      for (const crate of crateObjects) {
+        if (crate.held || crate.onFork) continue;
+        if (crate.pendingForkAt && now >= crate.pendingForkAt) {
+          attachCrateToFork(crate);
+        }
+      }
+
+      physicsWorld.step(1 / 60, dt, 3);
+
+      for (const crate of crateObjects) {
+        if (crate.held) continue;
+        if (crate.onFork) {
+          updateCrateOnFork(crate);
+          continue;
+        }
+        crate.group.position.copy(crate.body.position);
+        crate.group.quaternion.copy(crate.body.quaternion);
+      }
+    }
+
+    function getNearestDrivableForklift() {
+      if (!drivableForklift.ready || !drivableForklift.group) return null;
+      const dx = camera.position.x - drivableForklift.group.position.x;
+      const dz = camera.position.z - drivableForklift.group.position.z;
+      return Math.hypot(dx, dz) < 5.0 ? drivableForklift : null;
+    }
+
+    function updateCrateAim() {
+      if (activeTruck || activeForklift || heldCrate) {
+        aimedCrate = null;
+        return;
+      }
+
+      carryRaycaster.far = CRATE_PICKUP_RANGE;
+      carryRaycaster.setFromCamera(carryScreen, camera);
+      const hits = carryRaycaster.intersectObjects(
+        crateObjects.filter((crate) => !crate.onFork).map((crate) => crate.group),
+        true
+      );
+
+      aimedCrate = null;
+      for (const hit of hits) {
+        let node = hit.object;
+        while (node && !node.userData.crate) node = node.parent;
+        if (node && node.userData.crate && !node.userData.crate.onFork) {
+          aimedCrate = node.userData.crate;
+          break;
+        }
+      }
+    }
+
+    function pickupCrate(crate) {
+      if (!crate || heldCrate || activeTruck || activeForklift || crate.onFork) return;
+
+      physicsWorld.removeBody(crate.body);
+      scene.remove(crate.group);
+      camera.add(crate.group);
+      crate.group.position.set(0, -0.72, -1.22);
+      crate.group.rotation.set(0.08, 0.18, 0);
+      crate.held = true;
+      crate.pendingForkAt = 0;
+      heldCrate = crate;
+      aimedCrate = null;
+      promptMode = '';
+      updateInteractPrompt();
+    }
+
+    function dropCrate() {
+      const crate = heldCrate;
+      if (!crate) return;
+
+      const worldPosition = new THREE.Vector3();
+      const forwardDir = new THREE.Vector3();
+      camera.getWorldPosition(worldPosition);
+      camera.getWorldDirection(forwardDir);
+      forwardDir.y = 0;
+      if (forwardDir.lengthSq() < 0.0001) forwardDir.set(0, 0, -1);
+      forwardDir.normalize();
+
+      crate.group.removeFromParent();
+      scene.add(crate.group);
+
+      const body = crate.body;
+      body.type = CANNON.Body.DYNAMIC;
+      body.mass = CRATE_MASS;
+      body.updateMassProperties();
+      body.collisionResponse = true;
+      body.velocity.set(0, 0, 0);
+      body.angularVelocity.set(0, 0, 0);
+
+      const forklift = getNearestDrivableForklift();
+      if (forklift) {
+        const platformY = FORK_PLATFORM_BASE_Y + forklift.forkLift * FORK_TRAVEL;
+        forkliftTempVector.set(0, platformY + CRATE_SIZE / 2 + 0.95, FORK_LOCAL_Z);
+        forklift.group.localToWorld(forkliftTempVector);
+        body.position.set(forkliftTempVector.x, forkliftTempVector.y, forkliftTempVector.z);
+        body.velocity.set(0, -0.35, 0);
+        crate.pendingForkAt = performance.now() + 650;
+        showToast('木箱已放上货叉，按 E 驾驶叉车', 'CRATE ON FORKS');
+      } else {
+        body.position.set(
+          worldPosition.x + forwardDir.x * 1.05,
+          Math.max(0.55, worldPosition.y - 0.7),
+          worldPosition.z + forwardDir.z * 1.05
+        );
+        crate.pendingForkAt = 0;
+      }
+
+      crate.group.position.copy(body.position);
+      crate.group.quaternion.identity();
+      body.quaternion.set(0, 0, 0, 1);
+      body.wakeUp();
+      physicsWorld.addBody(body);
+
+      crate.held = false;
+      heldCrate = null;
+      promptMode = '';
+      updateInteractPrompt();
+    }
+
+    function handleInteract() {
+      if (!inputActive()) return;
+
+      if (activeTruck) {
+        exitTruck();
+        return;
+      }
+      if (activeForklift) {
+        exitForklift();
+        return;
+      }
+      if (heldCrate) return;
+
+      updateCrateAim();
+      if (aimedCrate) {
+        pickupCrate(aimedCrate);
+        return;
+      }
+
+      const forklift = getNearestDrivableForklift();
+      if (forklift) {
+        enterForklift();
+        return;
+      }
+
+      const truck = getNearestTruck();
+      if (truck) enterTruck(truck);
+    }
+
+    function handleActionF() {
+      if (!inputActive()) return;
+
+      if (heldCrate) {
+        dropCrate();
+        return;
+      }
+
+      if (activeForklift) {
+        toggleForkliftForks();
+        return;
+      }
+
+      handleFreightAction();
+    }
+
     let promptMode = '';
 
     function getNearestTruck() {
@@ -3189,10 +3702,18 @@
     function setPromptMode(mode) {
       if (mode === promptMode) return;
       promptMode = mode;
-      if (mode === 'drive') {
-        interactText.innerHTML = '方向键驾驶 &nbsp;·&nbsp; 按 <kbd>E</kbd> 下车';
-      } else if (mode === 'enter') {
+      if (mode === 'driveTruck') {
+        interactText.innerHTML = '方向键驾驶 &nbsp;·&nbsp; <kbd>F</kbd> 装卸 &nbsp;·&nbsp; 按 <kbd>E</kbd> 下车';
+      } else if (mode === 'driveForklift') {
+        interactText.innerHTML = '方向键驾驶 &nbsp;·&nbsp; <kbd>F</kbd> 升降货叉 &nbsp;·&nbsp; 按 <kbd>E</kbd> 下车';
+      } else if (mode === 'enterTruck') {
         interactText.innerHTML = '按 <kbd>E</kbd> 上车';
+      } else if (mode === 'enterForklift') {
+        interactText.innerHTML = '按 <kbd>E</kbd> 驾驶叉车';
+      } else if (mode === 'pickup') {
+        interactText.innerHTML = '按 <kbd>E</kbd> 拾取木箱';
+      } else if (mode === 'carry') {
+        interactText.innerHTML = '按 <kbd>F</kbd> 放下木箱';
       }
     }
 
@@ -3203,14 +3724,41 @@
       }
 
       if (activeTruck) {
-        setPromptMode('drive');
+        setPromptMode('driveTruck');
+        interactPrompt.classList.add('visible');
+        return;
+      }
+
+      if (activeForklift) {
+        setPromptMode('driveForklift');
+        interactPrompt.classList.add('visible');
+        return;
+      }
+
+      if (heldCrate) {
+        aimedCrate = null;
+        setPromptMode('carry');
+        interactPrompt.classList.add('visible');
+        return;
+      }
+
+      updateCrateAim();
+      if (aimedCrate) {
+        setPromptMode('pickup');
+        interactPrompt.classList.add('visible');
+        return;
+      }
+
+      nearestForklift = getNearestDrivableForklift();
+      if (nearestForklift) {
+        setPromptMode('enterForklift');
         interactPrompt.classList.add('visible');
         return;
       }
 
       nearestTruck = getNearestTruck();
       if (nearestTruck) {
-        setPromptMode('enter');
+        setPromptMode('enterTruck');
         interactPrompt.classList.add('visible');
       } else {
         interactPrompt.classList.remove('visible');
@@ -3315,8 +3863,140 @@
       updateInteractPrompt();
     }
 
-    function toggleTruck() {
-      if (!inputActive()) return;
+    function enterForklift() {
+      if (!drivableForklift.ready || activeTruck || activeForklift || heldCrate) return;
+
+      activeForklift = drivableForklift;
+      keys.clear();
+      velocity.set(0, 0, 0);
+      drivableForklift.speed = 0;
+      drivableForklift.mount.add(camera);
+      camera.position.set(0, 0, 0);
+      camera.rotation.set(0, 0, 0);
+
+      footerHint.innerHTML = FORKLIFT_HINT;
+      statusLabel.textContent = 'FORKLIFT';
+      document.body.classList.add('driving', 'forklift');
+      speedValue.textContent = '0';
+      steeringVisual = 0;
+      steeringWheel.style.transform = 'rotate(0deg)';
+      forkLiftValue.textContent = (drivableForklift.forkLift * FORK_TRAVEL).toFixed(2);
+      refuelHud.classList.remove('show');
+      promptMode = '';
+      updateInteractPrompt();
+    }
+
+    function exitForklift() {
+      const forklift = activeForklift;
+      if (!forklift) return;
+
+      forklift.speed = 0;
+      keys.clear();
+      scene.attach(camera);
+
+      const heading = forklift.heading;
+      const sideX = -Math.cos(heading);
+      const sideZ = Math.sin(heading);
+      let px = forklift.group.position.x + sideX * 2.3;
+      let pz = forklift.group.position.z + sideZ * 2.3;
+
+      if (pointBlocked(px, pz, 0.5)) {
+        px = forklift.group.position.x - sideX * 2.3;
+        pz = forklift.group.position.z - sideZ * 2.3;
+      }
+      if (pointBlocked(px, pz, 0.5)) {
+        px = forklift.group.position.x + Math.sin(heading) * 2.6;
+        pz = forklift.group.position.z + Math.cos(heading) * 2.6;
+      }
+
+      camera.position.set(px, EYE_HEIGHT, pz);
+      camera.rotation.set(0, heading, 0);
+
+      activeForklift = null;
+      nearestForklift = null;
+      footerHint.innerHTML = WALK_HINT;
+      statusLabel.textContent = 'FIRST PERSON';
+      document.body.classList.remove('driving', 'forklift');
+      speedValue.textContent = '0';
+      steeringVisual = 0;
+      steeringWheel.style.transform = 'rotate(0deg)';
+      promptMode = '';
+      updateInteractPrompt();
+    }
+
+    function toggleForkliftForks() {
+      if (!activeForklift) return;
+      activeForklift.forkTarget = activeForklift.forkTarget > 0.5 ? 0 : 1;
+    }
+
+    function updateActiveForklift(dt) {
+      const forklift = activeForklift;
+      if (!forklift) return;
+
+      const throttle = (keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0);
+      if (throttle > 0) {
+        forklift.speed += 3.2 * dt;
+      } else if (throttle < 0) {
+        forklift.speed -= 3.8 * dt;
+      } else {
+        forklift.speed *= Math.exp(-2.4 * dt);
+      }
+
+      if (throttle === 0 && Math.abs(forklift.speed) < 0.02) forklift.speed = 0;
+      forklift.speed = THREE.MathUtils.clamp(forklift.speed, -2.8, 3.8);
+
+      const steer = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
+      let nextHeading = forklift.heading;
+      if (Math.abs(forklift.speed) > 0.04) {
+        const speedFactor = Math.min(Math.abs(forklift.speed) / 1.4, 1);
+        nextHeading += steer * 1.75 * dt * speedFactor * (forklift.speed >= 0 ? 1 : -1);
+      }
+
+      const forwardX = -Math.sin(nextHeading);
+      const forwardZ = -Math.cos(nextHeading);
+      const nextX = forklift.group.position.x + forwardX * forklift.speed * dt;
+      const nextZ = forklift.group.position.z + forwardZ * forklift.speed * dt;
+      const frontX = nextX + forwardX * 0.9;
+      const frontZ = nextZ + forwardZ * 0.9;
+
+      const outside =
+        nextX < WORLD.minX + 2 || nextX > WORLD.maxX - 2 ||
+        nextZ < WORLD.minZ + 2 || nextZ > WORLD.maxZ - 2;
+
+      if (outside ||
+          pointBlocked(nextX, nextZ, 0.62) ||
+          pointBlocked(frontX, frontZ, 0.5) ||
+          pointInTruck(nextX, nextZ, 0.35)) {
+        forklift.speed *= -0.12;
+      } else {
+        forklift.group.position.x = nextX;
+        forklift.group.position.z = nextZ;
+        forklift.group.position.y = 0.02;
+        forklift.heading = nextHeading;
+        forklift.group.rotation.y = nextHeading;
+      }
+
+      const forkTarget = forklift.forkTarget;
+      if (forklift.forkLift < forkTarget) {
+        forklift.forkLift = Math.min(forkTarget, forklift.forkLift + 0.58 * dt);
+      } else if (forklift.forkLift > forkTarget) {
+        forklift.forkLift = Math.max(forkTarget, forklift.forkLift - 0.58 * dt);
+      }
+      if (forklift.forks) {
+        forklift.forks.position.y = forklift.forksBaseY + forklift.forkLift * FORK_TRAVEL;
+      }
+      forkLiftValue.textContent = (forklift.forkLift * FORK_TRAVEL).toFixed(2);
+
+      speedValue.textContent = String(Math.round(Math.abs(forklift.speed) * 3.6));
+      steeringVisual = THREE.MathUtils.damp(steeringVisual, steer * 0.55, 8, dt);
+      steeringWheel.style.transform = `rotate(${steeringVisual * 90}deg)`;
+
+      for (const wheel of forklift.wheels) {
+        wheel.rotation.x += forklift.speed * dt * 2.2;
+      }
+    }
+
+    function toggleTruck() {      if (!inputActive()) return;
 
       if (activeTruck) {
         exitTruck();
@@ -3949,6 +4629,8 @@
 
       if (activeTruck) {
         updateActiveTruck(dt);
+      } else if (activeForklift) {
+        updateActiveForklift(dt);
       } else {
         // First-person movement: horizontal only, relative to camera yaw.
         const yaw = camera.rotation.y;
@@ -3986,6 +4668,7 @@
         }
       }
 
+      updateCratePhysics(dt);
       updateFreightPrompt();
       updateForklift(dt);
       updateGasStations(dt);

@@ -1,8 +1,34 @@
 # 锦州港 · 物流数字孪生沙盘
 
-一个面向港口物流业务的专业级 3D 沙盘：TMS 车辆监控、油耗与疲劳预警、4 个加油站、提货—运输—送达闭环、叉车堆叠动画，以及 A* 小地图路径规划。
+一个面向港口物流业务的专业级 3D 沙盘：TMS 车辆监控、油耗与疲劳预警、4 个加油站、提货—运输—送达闭环、叉车堆叠动画、Cannon-es 第一人称木箱搬运，以及可驾驶叉车装卸，配合 A* 小地图路径规划。
 
 ![物流单与任务 UI](preview.png)
+
+## 第一人称搬运与可驾驶叉车（Cannon-es）
+
+- 出生点前放置 **4 个木箱**，每个是 **6 kg** 的 Cannon-es 刚体，支持重力、摩擦和相互碰撞
+- 第一人称准星对准木箱：
+  - 屏幕提示 `按 E 拾取木箱`
+  - 按 **E** 后木箱吸附到摄像机正前方，模拟双手抱箱
+- 抱着木箱靠近出生点旁的黄色叉车：
+  - 提示切换为 `按 F 放下木箱`
+  - 按 **F** 后木箱在货叉上方受重力下落
+  - 落稳后自动锁定到货叉，提示 `木箱已放上货叉，按 E 驾驶叉车`
+- 按 **E** 上叉车：
+  - 采用第三人称跟车视角，便于观察货叉和货物
+  - `↑ ↓` 驾驶，`← →` 转向
+  - 按 **F** 抬升/降下货叉，左侧 HUD 实时显示货叉高度
+  - 货叉抬升和叉车行驶时，木箱会跟随货叉移动
+
+![木箱与拾取提示](preview-carry-aim.png)
+
+![抱着木箱](preview-carry-hold.png)
+
+![叉车货叉上的木箱](preview-forklift-load.png)
+
+![叉车运走木箱](preview-forklift-drive.png)
+
+> 码头送达动画里的自动叉车仍然保留；出生点旁是一台单独的可驾驶叉车。
 
 ## 提货 → 运输 → 送达闭环
 
@@ -102,9 +128,9 @@
 | --- | --- |
 | 步行 | `W A S D` |
 | 环视 | 鼠标；Pointer Lock 不可用时按住左键拖拽 |
-| 上车 / 下车 | `E` |
-| 驾驶 | `↑ ↓` 加速/倒车，`← →` 转向 |
-| 装货 / 卸货 | `F` |
+| 拾取木箱 / 上叉车 / 上卡车 | `E` |
+| 放下木箱 / 叉车升降货叉 / 卡车装卸货 | `F` |
+| 驾驶卡车或叉车 | `↑ ↓` 加速/倒车，`← →` 转向 |
 | 释放鼠标 | `ESC` |
 
 ## 在线访问
@@ -119,7 +145,7 @@ node server.mjs
 
 打开 http://127.0.0.1:5178
 
-> Three.js 与 addons 通过 GCore jsDelivr 镜像加载，需要联网。
+> Three.js、addons 与 cannon-es 通过 GCore jsDelivr 镜像加载，需要联网。
 
 ## 文件结构
 
@@ -140,8 +166,12 @@ blender/
   build_forklift.py
 preview.png
 preview-cab.png
+preview-carry-aim.png
+preview-carry-hold.png
 preview-dock.png
 preview-forklift.png
+preview-forklift-drive.png
+preview-forklift-load.png
 preview-map.png
 preview-station.png
 ```
