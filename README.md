@@ -23,8 +23,27 @@
   - 每完成一次托盘入库，托盘数 +1
   - 驾驶卡车或叉车时累计作业时长，大屏打开期间暂停计时
 - 大屏打开时暂停车辆输入，数据继续实时刷新；关闭后恢复驾驶
+- 大屏数字使用 Consolas / Courier New 等宽字体
 
 ![物流数据可视化大屏](preview-dashboard.png)
+
+## 场景质感、黄昏光效与环境音
+
+- **地面**：程序化沥青/水泥贴图，包含骨料颗粒、混凝土分仓缝、轮胎磨痕、油渍和细裂纹；叠加 bump map，近景有明显凹凸质感
+- **集装箱**：新增锈斑、锈水垂流、底部锈蚀带和污渍；通过 `roughnessMap` 让锈蚀区域更粗糙，高模与 LOD 集装箱都应用
+- **黄昏/夜景光效**：
+  - 暖色低角度主光 + 冷色天光补光
+  - 10 盏港口灯：仓库门前高杆灯、中央大道路灯、码头岸桥探照灯
+  - 每盏灯都有 `SpotLight` 光池和加色光晕 sprite，远处能看到灯光轮廓
+- **环境音效**（全部由 WebAudio 实时合成，不依赖外部音频链接）：
+  - 进入场景后的低沉港口环境底噪
+  - 叉车启动时的引擎点火/怠速声
+  - 货叉上升、下降时的液压嘶声与伺服音
+  - 按 TAB 打开/关闭数据大屏时的 UI 提示音
+  - 浏览器自动播放策略要求先点击进入场景或按一次键，音频才会解锁
+- **数据大屏字体**：Consolas / Courier New / 等宽回退，数字和英文遥测更有终端感
+
+![黄昏港口与灯光](preview-night.png)
 
 ## 叉车托盘作业闭环
 
@@ -219,6 +238,7 @@ preview.png
 preview-cab.png
 preview-camera-collision.png
 preview-dashboard.png
+preview-night.png
 preview-dock.png
 preview-forklift.png
 preview-forklift-job.png

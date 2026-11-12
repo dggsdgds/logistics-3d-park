@@ -1103,7 +1103,7 @@
     box-sizing: border-box;
     padding: 18px 28px 12px;
     color: #dff7ff;
-    font-family: "Bahnschrift", "Microsoft YaHei", "Segoe UI", sans-serif;
+    font-family: "Consolas", "Courier New", "Microsoft YaHei", monospace;
     background:
       radial-gradient(circle at 50% -10%, rgba(38, 154, 194, 0.22), transparent 42%),
       radial-gradient(circle at 8% 90%, rgba(28, 101, 128, 0.12), transparent 36%),
@@ -1392,7 +1392,7 @@
   }
   .dash-kpi-value {
     color: #f2fbff;
-    font-family: "Bahnschrift", "DIN Alternate", "Microsoft YaHei", sans-serif;
+    font-family: "Consolas", "Courier New", "Microsoft YaHei", monospace;
     font-size: clamp(58px, 7.4vw, 108px);
     line-height: .86;
     font-weight: 600;
@@ -2028,7 +2028,7 @@
       }
       maxSpeed = Math.max(40, Math.ceil((maxSpeed * 1.18) / 10) * 10);
 
-      ctx.font = '9px "Bahnschrift", "Segoe UI", sans-serif';
+      ctx.font = '9px "Consolas", "Courier New", monospace';
       ctx.lineWidth = 1;
       ctx.strokeStyle = 'rgba(90, 209, 255, 0.10)';
 
@@ -2072,7 +2072,7 @@
       if (count < 2) {
         ctx.fillStyle = 'rgba(90, 209, 255, 0.35)';
         ctx.textAlign = 'center';
-        ctx.font = '11px "Bahnschrift", "Segoe UI", sans-serif';
+        ctx.font = '11px "Consolas", "Courier New", monospace';
         ctx.fillText('WAITING FOR TELEMETRY', padL + pw / 2, padT + ph / 2);
         return;
       }
@@ -2156,7 +2156,7 @@
       const pw = Math.max(1, w - padL - padR);
       const ph = Math.max(1, h - padT - padB);
 
-      ctx.font = '9px "Bahnschrift", "Segoe UI", sans-serif';
+      ctx.font = '9px "Consolas", "Courier New", monospace';
       ctx.lineWidth = 1;
       ctx.strokeStyle = 'rgba(90, 209, 255, 0.10)';
       for (let i = 0; i <= 4; i++) {
@@ -2212,14 +2212,14 @@
 
         ctx.fillStyle = '#eafaff';
         ctx.textAlign = 'center';
-        ctx.font = '600 22px "Bahnschrift", "Segoe UI", sans-serif';
+        ctx.font = '600 22px "Consolas", "Courier New", monospace';
         ctx.fillText(`${Math.round(value)}%`, center, Math.max(padT + 16, y - 8));
 
         ctx.fillStyle = bar.color;
-        ctx.font = '11px "Bahnschrift", "Microsoft YaHei", sans-serif';
+        ctx.font = '11px "Consolas", "Courier New", "Microsoft YaHei", monospace';
         ctx.fillText(bar.label, center, padT + ph + 17);
         ctx.fillStyle = '#4e7283';
-        ctx.font = '8px "Bahnschrift", "Segoe UI", sans-serif';
+        ctx.font = '8px "Consolas", "Courier New", monospace';
         ctx.fillText(`${bar.count} 货位`, center, padT + ph + 29);
       });
     }
@@ -2290,6 +2290,7 @@
       } else {
         updateInteractPrompt();
       }
+      playDashboardTone(open);
     }
 
     function toggleDashboard() {
@@ -2305,6 +2306,161 @@
 
 
     let fallbackMode = false;
+
+    /* ------------------------------------------------------------------ */
+    /*  WebAudio: port ambience, forklift starter, hydraulics, UI tones    */
+    /* ------------------------------------------------------------------ */
+    let audioContext = null;
+    let audioMaster = null;
+    let audioNoiseBuffer = null;
+    let ambientStarted = false;
+
+    function makeAudioNoiseBuffer(context, seconds) {
+      const length = Math.floor(context.sampleRate * seconds);
+      const buffer = context.createBuffer(1, length, context.sampleRate);
+      const data = buffer.getChannelData(0);
+      let last = 0;
+      for (let i = 0; i < length; i++) {
+        const white = Math.random() * 2 - 1;
+        last = (last + 0.02 * white) / 1.02;
+        data[i] = last * 3.2;
+      }
+      return buffer;
+    }
+
+    function startAmbient() {
+      if (ambientStarted || !audioContext) return;
+      ambientStarted = true;
+
+      const noise = audioContext.createBufferSource();
+      noise.buffer = audioNoiseBuffer;
+      noise.loop = true;
+      const noiseFilter = audioContext.createBiquadFilter();
+      noiseFilter.type = 'lowpass';
+      noiseFilter.frequency.value = 420;
+      noiseFilter.Q.value = 0.6;
+      const noiseGain = audioContext.createGain();
+      noiseGain.gain.value = 0.014;
+      noise.connect(noiseFilter).connect(noiseGain).connect(audioMaster);
+      noise.start();
+
+      const hum = audioContext.createOscillator();
+      hum.type = 'sine';
+      hum.frequency.value = 48;
+      const humGain = audioContext.createGain();
+      humGain.gain.value = 0.004;
+      hum.connect(humGain).connect(audioMaster);
+      hum.start();
+    }
+
+    function initAudio() {
+      if (!audioContext) {
+        const AudioCtor = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtor) return null;
+        try {
+          audioContext = new AudioCtor();
+          audioMaster = audioContext.createGain();
+          audioMaster.gain.value = 0.55;
+          audioMaster.connect(audioContext.destination);
+          audioNoiseBuffer = makeAudioNoiseBuffer(audioContext, 4);
+          startAmbient();
+        } catch (error) {
+          audioContext = null;
+          return null;
+        }
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {});
+      }
+      return audioContext;
+    }
+
+    function playForkliftStart() {
+      const ctx = initAudio();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(520, now);
+      filter.frequency.exponentialRampToValueAtTime(280, now + 1.1);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.035);
+      gain.gain.exponentialRampToValueAtTime(0.045, now + 0.35);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.15);
+      filter.connect(gain).connect(audioMaster);
+
+      const engine = ctx.createOscillator();
+      engine.type = 'sawtooth';
+      engine.frequency.setValueAtTime(54, now);
+      engine.frequency.exponentialRampToValueAtTime(92, now + 0.12);
+      engine.frequency.exponentialRampToValueAtTime(46, now + 1.05);
+      engine.connect(filter);
+      engine.start(now);
+      engine.stop(now + 1.2);
+
+      const starter = ctx.createOscillator();
+      starter.type = 'square';
+      starter.frequency.setValueAtTime(180, now);
+      starter.frequency.exponentialRampToValueAtTime(110, now + 0.22);
+      const starterGain = ctx.createGain();
+      starterGain.gain.setValueAtTime(0.0001, now);
+      starterGain.gain.exponentialRampToValueAtTime(0.025, now + 0.02);
+      starterGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.25);
+      starter.connect(starterGain).connect(audioMaster);
+      starter.start(now);
+      starter.stop(now + 0.27);
+    }
+
+    function playHydraulic(direction) {
+      const ctx = initAudio();
+      if (!ctx || !audioNoiseBuffer) return;
+      const now = ctx.currentTime;
+      const source = ctx.createBufferSource();
+      source.buffer = audioNoiseBuffer;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.Q.value = 0.9;
+      filter.frequency.setValueAtTime(direction > 0 ? 460 : 1300, now);
+      filter.frequency.exponentialRampToValueAtTime(direction > 0 ? 1450 : 420, now + 0.42);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.055, now + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.46);
+      source.connect(filter).connect(gain).connect(audioMaster);
+      source.start(now, Math.random() * 1.2, 0.48);
+      source.stop(now + 0.5);
+
+      const servo = ctx.createOscillator();
+      servo.type = 'triangle';
+      servo.frequency.setValueAtTime(direction > 0 ? 180 : 300, now);
+      servo.frequency.exponentialRampToValueAtTime(direction > 0 ? 310 : 160, now + 0.4);
+      const servoGain = ctx.createGain();
+      servoGain.gain.setValueAtTime(0.0001, now);
+      servoGain.gain.exponentialRampToValueAtTime(0.012, now + 0.03);
+      servoGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.42);
+      servo.connect(servoGain).connect(audioMaster);
+      servo.start(now);
+      servo.stop(now + 0.44);
+    }
+
+    function playDashboardTone(open) {
+      const ctx = initAudio();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(open ? 640 : 520, now);
+      osc.frequency.exponentialRampToValueAtTime(open ? 1020 : 300, now + 0.16);
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.065, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+      osc.connect(gain).connect(audioMaster);
+      osc.start(now);
+      osc.stop(now + 0.22);
+    }
+
     let lockAttemptTimer = null;
     let inputHintTimer = null;
     let dragPointerId = null;
@@ -2325,6 +2481,7 @@
 
     function enableFallback() {
       if (controls.isLocked) return;
+      initAudio();
       fallbackMode = true;
       clearTimeout(lockAttemptTimer);
       lockOverlay.classList.add('hidden');
@@ -2335,6 +2492,7 @@
 
     function enterScene() {
       if (controls.isLocked || fallbackMode) return;
+      initAudio();
 
       clearTimeout(lockAttemptTimer);
       lockAttemptTimer = setTimeout(() => {
@@ -2459,6 +2617,7 @@
       if (activeForklift &&
           (event.code === 'Space' || event.code === 'KeyC' ||
            event.code === 'ShiftLeft' || event.code === 'ShiftRight')) {
+        if (!event.repeat) playHydraulic(event.code === 'Space' ? 1 : -1);
         keys.add(event.code);
         event.preventDefault();
         return;
@@ -2513,7 +2672,7 @@
     /* ------------------------------------------------------------------ */
     /*  Lights                                                             */
     /* ------------------------------------------------------------------ */
-    const sun = new THREE.DirectionalLight(0xffe2b8, 5.2);
+    const sun = new THREE.DirectionalLight(0xffd2a0, 4.4);
     sun.position.set(75, 70, 45);
     sun.castShadow = true;
     sun.shadow.mapSize.set(4096, 4096);
@@ -2529,15 +2688,91 @@
     scene.add(sun);
     scene.add(sun.target);
 
-    const skyFill = new THREE.HemisphereLight(0x9dc0e6, 0x1b2027, 0.85);
+    const skyFill = new THREE.HemisphereLight(0x9dc0e6, 0x1b2027, 0.7);
     scene.add(skyFill);
 
-    const ambient = new THREE.AmbientLight(0xc4d8ea, 0.18);
+    const ambient = new THREE.AmbientLight(0xc4d8ea, 0.14);
     scene.add(ambient);
 
-    const coolFill = new THREE.DirectionalLight(0x4a8fce, 0.8);
+    const coolFill = new THREE.DirectionalLight(0x4a8fce, 0.55);
     coolFill.position.set(-60, 40, -80);
     scene.add(coolFill);
+
+    /* ------------------------------------------------------------------ */
+    /*  Night-shift floodlights                                            */
+    /* ------------------------------------------------------------------ */
+    const floodPoleMat = new THREE.MeshStandardMaterial({
+      color: 0x232a30,
+      roughness: 0.7,
+      metalness: 0.55
+    });
+    const floodHeadMat = new THREE.MeshStandardMaterial({
+      color: 0x151b20,
+      roughness: 0.45,
+      metalness: 0.7
+    });
+    const floodGlowTexture = makeFloodlightGlowTexture();
+
+    function addFloodlight(x, z, height, targetX, targetZ, color, intensity, glowColor) {
+      const group = new THREE.Group();
+      group.position.set(x, 0, z);
+
+      const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.14, 0.24, height, 8),
+        floodPoleMat
+      );
+      pole.position.y = height / 2;
+      pole.castShadow = true;
+      group.add(pole);
+
+      const crossarm = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, 0.13, 0.13),
+        floodPoleMat
+      );
+      crossarm.position.y = height - 0.35;
+      group.add(crossarm);
+
+      const head = new THREE.Mesh(
+        new THREE.BoxGeometry(1.2, 0.28, 0.44),
+        floodHeadMat
+      );
+      head.position.set(0.7, height - 0.45, 0);
+      head.rotation.z = -0.14;
+      group.add(head);
+
+      const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: floodGlowTexture,
+        color: glowColor,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        toneMapped: false,
+        opacity: 0.8
+      }));
+      glow.position.set(0.7, height - 0.42, 0);
+      glow.scale.setScalar(8.5);
+      group.add(glow);
+
+      const spot = new THREE.SpotLight(color, intensity, 72, 0.62, 0.58, 1.35);
+      spot.position.set(x + 0.7, height - 0.5, z);
+      spot.target.position.set(targetX, 0, targetZ);
+      spot.castShadow = false;
+      scene.add(spot);
+      scene.add(spot.target);
+
+      scene.add(group);
+    }
+
+    addFloodlight(-10.5, 64, 9.5, 0, 54, 0xffbf72, 230, 0xffd27c);
+    addFloodlight(10.5, 64, 9.5, 0, 54, 0xffbf72, 230, 0xffd27c);
+    addFloodlight(-13, 71, 12, 0, 76, 0xffae5c, 260, 0xffc46b);
+    addFloodlight(13, 71, 12, 0, 76, 0xffae5c, 260, 0xffc46b);
+    addFloodlight(-34, -55, 14, -20, -68, 0xc7e7ff, 220, 0xd8f1ff);
+    addFloodlight(34, -55, 14, 20, -68, 0xc7e7ff, 220, 0xd8f1ff);
+    addFloodlight(-7.5, 44, 8.5, -1, 38, 0xffb45e, 170, 0xffce78);
+    addFloodlight(7.5, 44, 8.5, 1, 38, 0xffb45e, 170, 0xffce78);
+    addFloodlight(-7.5, 10, 8.5, -1, 4, 0xffb45e, 170, 0xffce78);
+    addFloodlight(7.5, 10, 8.5, 1, 4, 0xffb45e, 170, 0xffce78);
 
     /* ------------------------------------------------------------------ */
     /*  Dock ground                                                        */
@@ -2546,6 +2781,8 @@
       new THREE.PlaneGeometry(600, 400),
       new THREE.MeshStandardMaterial({
         map: makeConcreteTexture(),
+        bumpMap: makeConcreteBumpTexture(),
+        bumpScale: 0.055,
         color: 0xffffff,
         envMapIntensity: 0.35,
         roughness: 0.94,
@@ -2811,12 +3048,14 @@
     const containerGeo = new THREE.BoxGeometry(CONTAINER.w, CONTAINER.h, CONTAINER.l);
     const containerTex = makeContainerTexture();
     const containerBump = makeContainerBumpTexture();
+    const containerRoughness = makeContainerRoughnessTexture();
     const containerMat = new THREE.MeshStandardMaterial({
       map: containerTex,
       bumpMap: containerBump,
-      bumpScale: 0.1,
-      roughness: 0.6,
-      metalness: 0.8,
+      bumpScale: 0.08,
+      roughnessMap: containerRoughness,
+      roughness: 1.0,
+      metalness: 0.72,
       envMapIntensity: 1.1,
       color: 0xffffff
     });
@@ -4038,8 +4277,12 @@
 
           if (!part.isHardware) {
             material.color.setHex(0xffffff);
-            material.metalness = 0.8;
-            material.roughness = 0.6;
+            material.map = containerTex;
+            material.bumpMap = containerBump;
+            material.bumpScale = 0.065;
+            material.roughnessMap = containerRoughness;
+            material.roughness = 1.0;
+            material.metalness = 0.72;
           }
 
           const mesh = new THREE.InstancedMesh(part.geometry, material, bulkPlacements.length);
@@ -5004,6 +5247,7 @@
       drivableForklift.mount.add(camera);
       camera.position.set(0, 0, 0);
       camera.rotation.set(0, 0, 0);
+      playForkliftStart();
 
       footerHint.innerHTML = FORKLIFT_HINT;
       statusLabel.textContent = 'FORKLIFT';
@@ -5992,33 +6236,126 @@
     }
 
     function makeConcreteTexture() {
-      const size = 256;
+      const size = 512;
       const c = document.createElement('canvas');
       c.width = size;
       c.height = size;
       const ctx = c.getContext('2d');
 
-      ctx.fillStyle = '#252a31';
+      ctx.fillStyle = '#24292e';
       ctx.fillRect(0, 0, size, size);
 
-      for (let i = 0; i < 900; i++) {
-        const v = Math.random() > 0.5 ? 255 : 0;
-        ctx.fillStyle = `rgba(${v}, ${v}, ${v}, ${0.012 + Math.random() * 0.025})`;
-        ctx.fillRect(Math.random() * size, Math.random() * size, 2 + Math.random() * 5, 2 + Math.random() * 5);
+      // Mottled concrete / asphalt aggregate.
+      for (let i = 0; i < 5200; i++) {
+        const shade = Math.random() > 0.58 ? 255 : 0;
+        const alpha = 0.012 + Math.random() * 0.035;
+        const radius = 0.6 + Math.random() * 2.6;
+        ctx.fillStyle = `rgba(${shade}, ${shade}, ${shade}, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(Math.random() * size, Math.random() * size, radius, 0, Math.PI * 2);
+        ctx.fill();
       }
 
-      ctx.strokeStyle = '#171b20';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(1.5, 1.5, size - 3, size - 3);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(4.5, 4.5, size - 9, size - 9);
+      // Slab expansion joints, every quarter of the repeating tile.
+      for (let i = 0; i < 4; i++) {
+        const p = i * 128 + 2;
+        ctx.strokeStyle = 'rgba(8, 12, 16, 0.72)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(p, 0);
+        ctx.lineTo(p, size);
+        ctx.moveTo(0, p);
+        ctx.lineTo(size, p);
+        ctx.stroke();
+
+        ctx.strokeStyle = 'rgba(150, 160, 166, 0.07)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p + 3, 0);
+        ctx.lineTo(p + 3, size);
+        ctx.moveTo(0, p + 3);
+        ctx.lineTo(size, p + 3);
+        ctx.stroke();
+      }
+
+      // Tire and forklift scuff bands.
+      for (let i = 0; i < 14; i++) {
+        const y = Math.random() * size;
+        ctx.strokeStyle = `rgba(8, 11, 14, ${0.035 + Math.random() * 0.05})`;
+        ctx.lineWidth = 2 + Math.random() * 14;
+        ctx.beginPath();
+        ctx.moveTo(-20, y);
+        ctx.bezierCurveTo(size * 0.3, y - 12, size * 0.7, y + 10, size + 20, y - 3);
+        ctx.stroke();
+      }
+
+      // Old oil and water stains.
+      for (let i = 0; i < 10; i++) {
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        const radius = 12 + Math.random() * 50;
+        const grad = ctx.createRadialGradient(x, y, 2, x, y, radius);
+        grad.addColorStop(0, 'rgba(5, 8, 10, 0.28)');
+        grad.addColorStop(0.5, 'rgba(11, 18, 22, 0.12)');
+        grad.addColorStop(1, 'rgba(11, 18, 22, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Hairline cracks.
+      for (let i = 0; i < 22; i++) {
+        let x = Math.random() * size;
+        let y = Math.random() * size;
+        ctx.strokeStyle = `rgba(6, 9, 12, ${0.18 + Math.random() * 0.22})`;
+        ctx.lineWidth = 0.6 + Math.random() * 1.1;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        for (let j = 0; j < 4 + Math.random() * 5; j++) {
+          x += (Math.random() - 0.5) * 28;
+          y += (Math.random() - 0.5) * 28;
+          ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
 
       const tex = new THREE.CanvasTexture(c);
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(120, 80);
+      tex.repeat.set(64, 43);
       tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = anisotropy;
+      return tex;
+    }
+
+    function makeConcreteBumpTexture() {
+      const size = 256;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+      const img = ctx.createImageData(size, size);
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const grain = Math.random() * 34;
+          let value = 104 + grain;
+          if ((x % 64) < 2 || (y % 64) < 2) value = 28 + Math.random() * 18;
+          else if ((x % 64) < 4 || (y % 64) < 4) value += 18;
+          const i = (y * size + x) * 4;
+          img.data[i] = value;
+          img.data[i + 1] = value;
+          img.data[i + 2] = value;
+          img.data[i + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(img, 0, 0);
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(64, 43);
       tex.anisotropy = anisotropy;
       return tex;
     }
@@ -6064,34 +6401,143 @@
     }
 
     function makeContainerTexture() {
-      const size = 256;
+      const size = 512;
       const c = document.createElement('canvas');
       c.width = size;
       c.height = size;
       const ctx = c.getContext('2d');
 
-      ctx.fillStyle = '#e9e9e9';
+      ctx.fillStyle = '#e7e7e4';
       ctx.fillRect(0, 0, size, size);
 
-      for (let x = 0; x < size; x += 64) {
+      // Corrugated side panels and darker seams.
+      for (let x = 0; x < size; x += 128) {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.20)';
-        ctx.fillRect(x, 0, 7, size);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.34)';
-        ctx.fillRect(x + 7, 0, 5, size);
+        ctx.fillRect(x, 0, 14, size);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
+        ctx.fillRect(x + 14, 0, 9, size);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.fillRect(x + 64, 0, 4, size);
       }
 
       ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
-      ctx.fillRect(0, 0, size, 12);
-      ctx.fillRect(0, size - 12, size, 12);
+      ctx.fillRect(0, 0, size, 22);
+      ctx.fillRect(0, size - 22, size, 22);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
-      ctx.fillRect(0, 12, size, 3);
-      ctx.fillRect(0, size - 15, size, 3);
+      ctx.fillRect(0, 22, size, 5);
+      ctx.fillRect(0, size - 27, size, 5);
+
+      // Rust blooms, concentrated around the bottom edge and door seams.
+      for (let i = 0; i < 26; i++) {
+        const x = Math.random() * size;
+        const y = size * (0.52 + Math.random() * 0.46);
+        const radius = 5 + Math.random() * 30;
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        grad.addColorStop(0, 'rgba(112, 53, 23, 0.58)');
+        grad.addColorStop(0.35, 'rgba(128, 67, 30, 0.30)');
+        grad.addColorStop(0.72, 'rgba(96, 58, 33, 0.12)');
+        grad.addColorStop(1, 'rgba(96, 58, 33, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (Math.random() > 0.55) {
+          ctx.strokeStyle = 'rgba(91, 47, 25, 0.22)';
+          ctx.lineWidth = 1 + Math.random() * 2.2;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x + (Math.random() - 0.5) * 12, Math.min(size, y + 22 + Math.random() * 90));
+          ctx.stroke();
+        }
+      }
+
+      // Bottom rust wash and long vertical drips from the panel seams.
+      const rustWash = ctx.createLinearGradient(0, size * 0.74, 0, size);
+      rustWash.addColorStop(0, 'rgba(92, 43, 19, 0)');
+      rustWash.addColorStop(0.62, 'rgba(104, 49, 21, 0.16)');
+      rustWash.addColorStop(1, 'rgba(65, 31, 16, 0.42)');
+      ctx.fillStyle = rustWash;
+      ctx.fillRect(0, size * 0.74, size, size * 0.26);
+
+      for (let i = 0; i < 34; i++) {
+        const x = Math.random() * size;
+        const top = size * (0.32 + Math.random() * 0.5);
+        const length = 18 + Math.random() * 120;
+        ctx.strokeStyle = `rgba(88, 43, 21, ${0.10 + Math.random() * 0.24})`;
+        ctx.lineWidth = 1 + Math.random() * 3.2;
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x + (Math.random() - 0.5) * 8, Math.min(size, top + length));
+        ctx.stroke();
+      }
+
+      // Bottom grime and faded paint scuffs.
+      const grime = ctx.createLinearGradient(0, size * 0.72, 0, size);
+      grime.addColorStop(0, 'rgba(55, 36, 22, 0)');
+      grime.addColorStop(1, 'rgba(38, 28, 20, 0.28)');
+      ctx.fillStyle = grime;
+      ctx.fillRect(0, size * 0.72, size, size * 0.28);
+
+      for (let i = 0; i < 18; i++) {
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.025 + Math.random() * 0.05})`;
+        ctx.lineWidth = 1 + Math.random() * 3;
+        const x = Math.random() * size;
+        const y = Math.random() * size;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 14 + Math.random() * 52, y + (Math.random() - 0.5) * 8);
+        ctx.stroke();
+      }
 
       const tex = new THREE.CanvasTexture(c);
       tex.wrapS = THREE.RepeatWrapping;
       tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(8, 1);
       tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = anisotropy;
+      return tex;
+    }
+
+    function makeContainerRoughnessTexture() {
+      const size = 256;
+      const c = document.createElement('canvas');
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext('2d');
+      const img = ctx.createImageData(size, size);
+
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          let value = 132 + Math.random() * 22;
+          if (y > size * 0.7) value += 24 + Math.random() * 20;
+          if ((x % 32) < 3) value += 14;
+          const i = (y * size + x) * 4;
+          img.data[i] = value;
+          img.data[i + 1] = value;
+          img.data[i + 2] = value;
+          img.data[i + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(img, 0, 0);
+      for (let i = 0; i < 24; i++) {
+        const x = Math.random() * size;
+        const y = size * (0.5 + Math.random() * 0.5);
+        const radius = 6 + Math.random() * 26;
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0.65)');
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(8, 1);
       tex.anisotropy = anisotropy;
       return tex;
     }
@@ -6227,6 +6673,24 @@
       ctx.fillRect(0, 0, 16, 512);
       const tex = new THREE.CanvasTexture(c);
       tex.mapping = THREE.EquirectangularReflectionMapping;
+      tex.colorSpace = THREE.SRGBColorSpace;
+      return tex;
+    }
+
+    function makeFloodlightGlowTexture() {
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 256;
+      const ctx = c.getContext('2d');
+      const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      grad.addColorStop(0.08, 'rgba(255, 249, 226, 0.95)');
+      grad.addColorStop(0.2, 'rgba(255, 219, 157, 0.55)');
+      grad.addColorStop(0.48, 'rgba(255, 192, 104, 0.14)');
+      grad.addColorStop(1, 'rgba(255, 180, 80, 0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+      const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
       return tex;
     }
