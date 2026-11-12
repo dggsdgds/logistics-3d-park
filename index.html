@@ -4962,9 +4962,26 @@
         }
       }
 
-      const playerX = activeTruck ? activeTruck.group.position.x : camera.position.x;
-      const playerZ = activeTruck ? activeTruck.group.position.z : camera.position.z;
-      const heading = activeTruck ? activeTruck.heading : camera.rotation.y;
+      let playerX;
+      let playerZ;
+      let heading;
+
+      if (activeForklift) {
+        // The forklift camera is a child of the vehicle; camera.position is a
+        // local offset and must not be used as a world/minimap position.
+        playerX = activeForklift.group.position.x;
+        playerZ = activeForklift.group.position.z;
+        heading = activeForklift.heading;
+      } else if (activeTruck) {
+        playerX = activeTruck.group.position.x;
+        playerZ = activeTruck.group.position.z;
+        heading = activeTruck.heading;
+      } else {
+        playerX = camera.position.x;
+        playerZ = camera.position.z;
+        heading = camera.rotation.y;
+      }
+
       const px = worldToMapX(playerX);
       const py = worldToMapY(playerZ);
 
