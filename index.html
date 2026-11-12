@@ -292,7 +292,7 @@
   .input-hint {
     position: fixed;
     left: 50%;
-    bottom: 330px;
+    bottom: 390px;
     z-index: 4;
     padding: 8px 14px;
     border: 1px solid rgba(90, 209, 255, 0.36);
@@ -312,7 +312,74 @@
     opacity: 1;
     visibility: visible;
     transform: translateX(-50%) translateY(0);
-  }  .interact-prompt kbd {
+  }
+
+  .freight-prompt {
+    position: fixed;
+    left: 50%;
+    bottom: 330px;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    border: 1px solid rgba(255, 207, 74, 0.42);
+    background: rgba(10, 12, 14, 0.88);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.48);
+    backdrop-filter: blur(6px);
+    transform: translateX(-50%) translateY(6px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s ease, transform .2s ease, visibility .2s;
+    pointer-events: none;
+  }
+  .freight-prompt.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+  .freight-kind {
+    font-size: 8px;
+    letter-spacing: .18em;
+    color: #ffcf4a;
+    text-transform: uppercase;
+  }
+  .freight-name {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    color: #fff2c8;
+  }
+  .freight-action {
+    padding-left: 10px;
+    border-left: 1px solid rgba(255, 207, 74, 0.25);
+    font-size: 10px;
+    color: #aebbc4;
+  }
+  .freight-action b { color: #ffcf4a; }
+  .freight-action kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 22px;
+    border: 1px solid rgba(255, 207, 74, 0.5);
+    background: rgba(255, 207, 74, 0.08);
+    color: #ffcf4a;
+    font-family: inherit;
+    font-size: 11px;
+  }
+  .freight-prompt.delivery {
+    border-color: rgba(95, 230, 196, 0.45);
+  }
+  .freight-prompt.delivery .freight-kind,
+  .freight-prompt.delivery .freight-action b,
+  .freight-prompt.delivery .freight-action kbd {
+    color: #5fe6c4;
+    border-color: rgba(95, 230, 196, 0.45);
+  }
+  .freight-prompt.delivery .freight-name { color: #d9fff5; }
+  .freight-prompt.delivery .freight-action { border-left-color: rgba(95, 230, 196, 0.25); }  .interact-prompt kbd {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -752,6 +819,26 @@
     color: #ffcf4a;
   }
   #missionText { color: #eef7fc; }
+  .order-warehouse { color: #ffcf4a; font-weight: 500; }
+  .order-dock { color: #5fe6c4; font-weight: 500; }
+  .mission-stage {
+    padding: 3px 7px;
+    border: 1px solid rgba(255, 207, 74, 0.35);
+    background: rgba(255, 207, 74, 0.08);
+    font-size: 8px;
+    letter-spacing: .14em;
+    color: #ffcf4a;
+  }
+  .mission-stage.delivery {
+    border-color: rgba(95, 230, 196, 0.4);
+    background: rgba(95, 230, 196, 0.08);
+    color: #5fe6c4;
+  }
+  .mission-stage.forklift {
+    border-color: rgba(190, 155, 255, 0.4);
+    background: rgba(190, 155, 255, 0.08);
+    color: #c5a8ff;
+  }
 
   .score-card {
     position: fixed;
@@ -918,8 +1005,9 @@
 
   <div class="mission-banner" id="missionBanner">
     <span class="mission-dot"></span>
-    <span class="mission-tag">运输任务</span>
-    <span id="missionText">请驾驶卡车前往发光标记的集装箱卸货</span>
+    <span class="mission-tag" id="orderNumber">物流单 JZ-000000-000</span>
+    <span id="missionText">当前任务：[提货仓库 —] → [送达码头 —]</span>
+    <span id="missionStage" class="mission-stage pickup">待装货</span>
   </div>
 
   <div class="score-card" id="scoreCard">
@@ -935,8 +1023,8 @@
   <div class="mission-toast" id="missionToast">
     <span class="toast-check">✓</span>
     <div class="toast-copy">
-      <strong id="toastTitle">卸货完成，获得 100 绩效分</strong>
-      <span class="toast-reward" id="toastSub">WAREHOUSE JOB COMPLETE</span>
+      <strong id="toastTitle">装货完成，前往送达码头</strong>
+      <span class="toast-reward" id="toastSub">FREIGHT LOADED</span>
     </div>
   </div>
 
@@ -945,19 +1033,6 @@
     <div id="refuelStatus">停车自动加油 · 扣除 50 积分</div>
     <div class="refuel-track"><div id="refuelFill"></div></div>
     <div class="refuel-foot"><span>加油成本</span><span>-50 积分</span></div>
-  </div>
-
-  <div id="warehousePanel" class="warehouse-panel">
-    <div class="wh-head"><span>仓储调度</span><span id="whArea">A-06</span></div>
-    <div class="wh-title">目标集装箱</div>
-    <div class="wh-util-row"><span>库容利用率</span><strong id="whUtil">92%</strong></div>
-    <div class="wh-track"><div id="whFill"></div></div>
-    <div id="whAlert" class="wh-alert">爆仓预警 · 建议立即卸货</div>
-    <div class="wh-actions">
-      <button id="unloadBtn" type="button">卸货</button>
-      <span class="wh-click">左键点击卸货</span>
-    </div>
-    <div class="wh-hint">靠近目标集装箱后执行入库作业</div>
   </div>
 
   <footer class="footer">
@@ -969,6 +1044,12 @@
 
   <div id="interactPrompt" class="interact-prompt">
     <span id="interactText">按 <kbd>E</kbd> 上车</span>
+  </div>
+
+  <div id="freightPrompt" class="freight-prompt">
+    <span class="freight-kind" id="freightKind">提货仓库</span>
+    <strong class="freight-name" id="freightName">—</strong>
+    <span class="freight-action">按 <kbd>F</kbd> <b id="freightAction">装货</b></span>
   </div>
 
   <div id="inputHint" class="input-hint">兼容模式 · 按住左键拖拽环视</div>
@@ -1172,6 +1253,8 @@
     const speedValue = document.getElementById('speedValue');
     const steeringWheel = document.getElementById('steeringWheel');
     const missionText = document.getElementById('missionText');
+    const orderNumber = document.getElementById('orderNumber');
+    const orderStageLabel = document.getElementById('missionStage');
     const missionToast = document.getElementById('missionToast');
     const toastTitle = document.getElementById('toastTitle');
     const toastSub = document.getElementById('toastSub');
@@ -1189,12 +1272,10 @@
     const refuelStation = document.getElementById('refuelStation');
     const refuelStatus = document.getElementById('refuelStatus');
     const refuelFill = document.getElementById('refuelFill');
-    const warehousePanel = document.getElementById('warehousePanel');
-    const whArea = document.getElementById('whArea');
-    const whUtil = document.getElementById('whUtil');
-    const whFill = document.getElementById('whFill');
-    const whAlert = document.getElementById('whAlert');
-    const unloadBtn = document.getElementById('unloadBtn');
+    const freightPrompt = document.getElementById('freightPrompt');
+    const freightKind = document.getElementById('freightKind');
+    const freightName = document.getElementById('freightName');
+    const freightAction = document.getElementById('freightAction');
     let steeringVisual = 0;
     const WALK_HINT = footerHint.innerHTML;
     const DRIVE_HINT = '<b>↑ ↓</b> 加速/倒车 &nbsp;·&nbsp; <b>← →</b> 转向 &nbsp;·&nbsp; <b>E</b> 下车';
@@ -1338,6 +1419,14 @@
         if (!event.repeat) {
           event.preventDefault();
           toggleTruck();
+        }
+        return;
+      }
+
+      if (event.code === 'KeyF') {
+        if (!event.repeat) {
+          event.preventDefault();
+          handleFreightAction();
         }
         return;
       }
@@ -1954,18 +2043,36 @@
     scene.add(sunSprite);
 
     /* ------------------------------------------------------------------ */
-    /*  Warehouse dispatch                                                 */
+    /*  Logistics order loop: warehouse pickup -> dock delivery            */
     /* ------------------------------------------------------------------ */
     let score = 0;
+    let orderSequence = 0;
+    let orderId = '';
+    let orderStage = 'pickup';
     let missionActive = false;
     let missionTarget = null;
-    let missionPointIndex = -1;
+    let currentWarehouse = null;
+    let currentDock = null;
+    let currentWarehouseIndex = -1;
+    let lastPathTargetKey = '';
     let missionRespawnTimer = null;
     let toastTimer = null;
-    let warehousePanelOpen = false;
-    let warehouseReady = false;
-    let warehouseCompleting = false;
+    let cargoTruck = null;
+    let forkliftState = null;
+    let forkliftAssetReady = false;
     const WAREHOUSE_RANGE = 15;
+    const DOCK_RANGE = 15;
+
+    const docks = [
+      {
+        id: 'D01', name: '01', label: '泊位 01', x: -40, z: -68,
+        accessX: -40, accessZ: -65, stackX: -40, stackZ: -55.5
+      },
+      {
+        id: 'D02', name: '02', label: '泊位 02', x: 40, z: -68,
+        accessX: 40, accessZ: -65, stackX: 40, stackZ: -55.5
+      }
+    ];
 
     const targetBeamMat = new THREE.MeshBasicMaterial({
       color: 0xffc63c,
@@ -2027,6 +2134,165 @@
     missionGroup.visible = false;
     scene.add(missionGroup);
 
+    /* Delivery dock marker (cyan berth). */
+    const dockBeamMat = new THREE.MeshBasicMaterial({
+      color: 0x4fe0c2,
+      transparent: true,
+      opacity: 0.14,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      fog: false
+    });
+    const dockRingMat = new THREE.MeshBasicMaterial({
+      color: 0x5fe6c4,
+      transparent: true,
+      opacity: 0.72,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+      depthWrite: false
+    });
+    const dockPadMat = new THREE.LineBasicMaterial({
+      color: 0x5fe6c4,
+      transparent: true,
+      opacity: 0.75,
+      toneMapped: false
+    });
+
+    const dockGroup = new THREE.Group();
+    const dockBeam = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.95, 24, 12, 1, true),
+      dockBeamMat
+    );
+    dockBeam.position.y = 12;
+    const dockRing = new THREE.Mesh(
+      new THREE.TorusGeometry(7.5, 0.09, 8, 64),
+      dockRingMat
+    );
+    dockRing.rotation.x = -Math.PI / 2;
+    dockRing.position.y = 0.06;
+    const dockPad = new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(-5.0, 0.04, -4.0),
+        new THREE.Vector3(5.0, 0.04, -4.0),
+        new THREE.Vector3(5.0, 0.04, 4.0),
+        new THREE.Vector3(-5.0, 0.04, 4.0)
+      ]),
+      dockPadMat
+    );
+    dockGroup.add(dockBeam, dockRing, dockPad);
+    dockGroup.visible = false;
+    scene.add(dockGroup);
+
+    /* Static yard stack at each berth, used by the forklift animation. */
+    const dockStackMat = new THREE.MeshStandardMaterial({
+      color: 0x3f6a88,
+      roughness: 0.6,
+      metalness: 0.45,
+      envMapIntensity: 0.8
+    });
+    const dockStackEdgeMat = new THREE.LineBasicMaterial({
+      color: 0x9db7c6,
+      transparent: true,
+      opacity: 0.45
+    });
+
+    for (const dock of docks) {
+      const base = new THREE.Mesh(
+        new THREE.BoxGeometry(2.4, 1.4, 2.8),
+        dockStackMat
+      );
+      base.position.set(dock.stackX, 0.7, dock.stackZ);
+      base.castShadow = true;
+      base.receiveShadow = true;
+      scene.add(base);
+
+      const baseEdges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(base.geometry),
+        dockStackEdgeMat
+      );
+      baseEdges.position.copy(base.position);
+      scene.add(baseEdges);
+
+      colliders.push({
+        minX: dock.stackX - 1.2,
+        maxX: dock.stackX + 1.2,
+        minZ: dock.stackZ - 1.4,
+        maxZ: dock.stackZ + 1.4
+      });
+    }
+
+    /* Cargo model shown on the loaded truck. */
+    const cargoGroup = new THREE.Group();
+    const cargoMat = new THREE.MeshStandardMaterial({
+      color: 0xc97834,
+      roughness: 0.54,
+      metalness: 0.35
+    });
+    const cargoBody = new THREE.Mesh(
+      new THREE.BoxGeometry(1.9, 0.95, 2.7),
+      cargoMat
+    );
+    cargoBody.position.y = 0.475;
+    cargoBody.castShadow = false;
+    cargoGroup.add(cargoBody);
+    const cargoEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(cargoBody.geometry),
+      new THREE.LineBasicMaterial({ color: 0x2a1a0d, transparent: true, opacity: 0.7 })
+    );
+    cargoEdges.position.copy(cargoBody.position);
+    cargoGroup.add(cargoEdges);
+    cargoGroup.visible = false;
+
+    /* Crate handled by the forklift after delivery. */
+    const forkliftCrate = new THREE.Group();
+    const forkliftCrateBody = new THREE.Mesh(
+      new THREE.BoxGeometry(1.5, 1.2, 1.5),
+      cargoMat
+    );
+    forkliftCrateBody.position.y = 0.6;
+    forkliftCrateBody.castShadow = false;
+    forkliftCrate.add(forkliftCrateBody);
+    const forkliftCrateEdges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(forkliftCrateBody.geometry),
+      new THREE.LineBasicMaterial({ color: 0x2a1a0d, transparent: true, opacity: 0.7 })
+    );
+    forkliftCrateEdges.position.copy(forkliftCrateBody.position);
+    forkliftCrate.add(forkliftCrateEdges);
+    forkliftCrate.visible = false;
+    scene.add(forkliftCrate);
+
+    /* Blender forklift. */
+    const forkliftRoot = new THREE.Group();
+    forkliftRoot.visible = false;
+    scene.add(forkliftRoot);
+    let forkliftForks = null;
+    let forkliftForksBaseY = 0;
+
+    const forkliftLoader = new GLTFLoader();
+    forkliftLoader.load(
+      'assets/forklift.glb',
+      (gltf) => {
+        const model = gltf.scene;
+        model.traverse((node) => {
+          if (!node.isMesh) return;
+          node.castShadow = false;
+          node.receiveShadow = true;
+        });
+        forkliftRoot.add(model);
+        forkliftForks = model.getObjectByName('ForkliftForks');
+        if (forkliftForks) forkliftForksBaseY = forkliftForks.position.y;
+        forkliftAssetReady = true;
+        console.log('[port] Blender forklift loaded');
+      },
+      undefined,
+      (error) => {
+        console.error('[port] Forklift asset failed', error);
+        forkliftAssetReady = true;
+      }
+    );
+
     function addScore(delta) {
       score = Math.max(0, score + delta);
       scoreValue.textContent = String(score);
@@ -2047,7 +2313,7 @@
       const candidates = [];
 
       warehouseTargets.forEach((target, index) => {
-        if (index === missionPointIndex) return;
+        if (index === currentWarehouseIndex) return;
         const distance = Math.hypot(target.x - position.x, target.z - position.z);
         if (distance < 18) return;
         candidates.push(index);
@@ -2055,42 +2321,41 @@
 
       if (!candidates.length) {
         warehouseTargets.forEach((_, index) => {
-          if (index !== missionPointIndex) candidates.push(index);
+          if (index !== currentWarehouseIndex) candidates.push(index);
         });
       }
 
       return candidates[Math.floor(Math.random() * candidates.length)];
     }
 
-    function renderWarehousePanel() {
-      if (!missionTarget) return;
-
-      const utilization = Math.round(missionTarget.utilization);
-      const overload = utilization > 85;
-
-      whArea.textContent = missionTarget.area;
-      whUtil.textContent = `${utilization}%`;
-      whUtil.classList.toggle('overload', overload);
-      whFill.style.width = `${utilization}%`;
-      whFill.classList.toggle('overload', overload);
-      whAlert.classList.toggle('show', overload);
-      unloadBtn.disabled = !warehouseReady;
+    function makeOrderId() {
+      const now = new Date();
+      const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+      return `JZ-${date}-${String(orderSequence).padStart(3, '0')}`;
     }
 
-    function spawnWarehouseTarget(forceIndex = null) {
-      const index = forceIndex === null ? pickWarehouseIndex() : forceIndex;
-      const target = warehouseTargets[index];
-      if (!target) return;
+    function setOrderStage(stage) {
+      orderStage = stage;
+      const labels = {
+        pickup: '待装货',
+        delivery: '运输中',
+        forklift: '叉车入库中'
+      };
+      orderStageLabel.textContent = labels[stage] || '';
+      orderStageLabel.className = 'mission-stage ' +
+        (stage === 'delivery' ? 'delivery' : stage === 'forklift' ? 'forklift' : 'pickup');
+    }
 
-      missionPointIndex = index;
-      missionTarget = target;
-      missionActive = true;
-      warehouseReady = true;
-      warehouseCompleting = false;
-      warehousePanelOpen = false;
-      warehousePanel.classList.remove('show');
-      unloadBtn.disabled = false;
+    function updateOrderHud() {
+      orderNumber.textContent = `物流单 ${orderId}`;
+      missionText.innerHTML =
+        `当前任务：<b class="order-warehouse">[提货仓库 ${currentWarehouse.area}]</b>` +
+        ` <span class="order-arrow">→</span> ` +
+        `<b class="order-dock">[送达码头 ${currentDock.name}]</b>`;
+      setOrderStage(orderStage);
+    }
 
+    function positionWarehouseMarker(target) {
       missionGroup.position.set(target.x, 0, target.z);
       targetBeam.position.y = target.topY + 11;
       targetBox.scale.y = target.topY;
@@ -2103,92 +2368,264 @@
         0
       );
       missionGroup.visible = true;
-
-      missionText.textContent = '请驾驶卡车前往发光标记的集装箱卸货';
-      renderWarehousePanel();
     }
 
-    function updateWarehousePanel() {
-      if (warehouseCompleting) return;
+    function positionDockMarker(dock) {
+      dockGroup.position.set(dock.x, 0, dock.z);
+      dockGroup.visible = true;
+    }
 
-      if (!activeTruck || !missionActive || !missionTarget) {
-        if (warehousePanelOpen) {
-          warehousePanel.classList.remove('show');
-          warehousePanelOpen = false;
-        }
+    function hideFreightPrompt() {
+      freightPrompt.classList.remove('show');
+    }
+
+    function updateFreightPrompt() {
+      if (!activeTruck || !missionActive || orderStage === 'forklift') {
+        hideFreightPrompt();
         return;
       }
 
-      const dx = activeTruck.group.position.x - missionTarget.x;
-      const dz = activeTruck.group.position.z - missionTarget.z;
-
-      if (dx * dx + dz * dz > WAREHOUSE_RANGE * WAREHOUSE_RANGE) {
-        if (warehousePanelOpen) {
-          warehousePanel.classList.remove('show');
-          warehousePanelOpen = false;
-        }
+      const target = orderStage === 'pickup' ? currentWarehouse : currentDock;
+      const range = orderStage === 'pickup' ? WAREHOUSE_RANGE : DOCK_RANGE;
+      if (!target) {
+        hideFreightPrompt();
         return;
       }
 
-      if (!warehousePanelOpen) {
-        renderWarehousePanel();
-        warehousePanel.classList.add('show');
-        warehousePanelOpen = true;
+      const dx = activeTruck.group.position.x - target.x;
+      const dz = activeTruck.group.position.z - target.z;
+      if (dx * dx + dz * dz > range * range) {
+        hideFreightPrompt();
+        return;
       }
+
+      const delivery = orderStage === 'delivery';
+      if (delivery && cargoTruck !== activeTruck) {
+        hideFreightPrompt();
+        return;
+      }
+
+      freightPrompt.classList.add('show');
+      freightPrompt.classList.toggle('delivery', delivery);
+      freightKind.textContent = delivery ? '送达码头' : '提货仓库';
+      freightName.textContent = delivery ? currentDock.label : currentWarehouse.area;
+      freightAction.textContent = delivery ? '卸货' : '装货';
     }
 
-    function unloadWarehouseTarget() {
-      if (!warehouseReady || !missionActive || !missionTarget || !activeTruck || warehouseCompleting) return;
+    function loadFreight() {
+      if (orderStage !== 'pickup' || !missionActive || !activeTruck || !currentWarehouse) return;
 
-      const dx = activeTruck.group.position.x - missionTarget.x;
-      const dz = activeTruck.group.position.z - missionTarget.z;
+      const dx = activeTruck.group.position.x - currentWarehouse.x;
+      const dz = activeTruck.group.position.z - currentWarehouse.z;
       if (dx * dx + dz * dz > WAREHOUSE_RANGE * WAREHOUSE_RANGE) return;
 
-      warehouseReady = false;
-      warehouseCompleting = true;
+      cargoTruck = activeTruck;
+      activeTruck.group.add(cargoGroup);
+      cargoGroup.position.set(0, activeTruck.cargoTopY || 3.0, 0.35);
+      cargoGroup.visible = true;
 
-      const target = missionTarget;
-      target.utilization = Math.max(45, target.utilization - 20);
-      addScore(100);
-      renderWarehousePanel();
-      unloadBtn.disabled = true;
-      missionText.textContent = '卸货完成，正在分配下一个目标…';
-      showToast('卸货完成，获得 100 绩效分', 'WAREHOUSE JOB COMPLETE');
-
-      missionActive = false;
+      setOrderStage('delivery');
+      missionTarget = currentDock;
+      missionActive = true;
       missionGroup.visible = false;
-
-      clearTimeout(missionRespawnTimer);
-      setTimeout(() => {
-        warehousePanel.classList.remove('show');
-        warehousePanelOpen = false;
-        warehouseCompleting = false;
-        missionRespawnTimer = setTimeout(() => spawnWarehouseTarget(), 1200);
-      }, 750);
+      positionDockMarker(currentDock);
+      updateOrderHud();
+      hideFreightPrompt();
+      lastPathTargetKey = '';
+      showToast(`装货完成，前往 ${currentDock.label}`, 'FREIGHT LOADED');
     }
 
-    unloadBtn.addEventListener('click', unloadWarehouseTarget);
+    function unloadFreight() {
+      if (orderStage !== 'delivery' || !missionActive || !activeTruck) return;
+      if (cargoTruck !== activeTruck || !currentDock) return;
 
-    // Pointer lock hides the cursor, so a left click anywhere is the in-cab
-    // equivalent of pressing the visible "卸货" button.
-    window.addEventListener('mousedown', (event) => {
-      if (event.button !== 0 || !controls.isLocked) return;
-      if (!warehousePanelOpen || !warehouseReady) return;
-      unloadWarehouseTarget();
-    });
+      const dx = activeTruck.group.position.x - currentDock.x;
+      const dz = activeTruck.group.position.z - currentDock.z;
+      if (dx * dx + dz * dz > DOCK_RANGE * DOCK_RANGE) return;
 
-    const initialCandidates = [];
-    warehouseTargets.forEach((target, index) => {
-      const distance = Math.hypot(target.x, target.z - 64);
-      if (distance > 25) initialCandidates.push(index);
-    });
-    const initialWarehouseIndex = initialCandidates.length
-      ? initialCandidates[Math.floor(Math.random() * initialCandidates.length)]
-      : Math.floor(Math.random() * warehouseTargets.length);
-    if (warehouseTargets[initialWarehouseIndex]) {
-      warehouseTargets[initialWarehouseIndex].utilization = 92;
+      cargoGroup.removeFromParent();
+      cargoGroup.visible = false;
+      cargoTruck = null;
+
+      setOrderStage('forklift');
+      missionActive = false;
+      missionTarget = null;
+      dockGroup.visible = false;
+      hideFreightPrompt();
+      updateOrderHud();
+      addScore(100);
+      showToast('送达完成，获得 100 积分', 'DELIVERY COMPLETE');
+      startForklift(currentDock);
     }
-    spawnWarehouseTarget(initialWarehouseIndex);
+
+    function handleFreightAction() {
+      if (!inputActive() || !activeTruck) return;
+
+      if (orderStage === 'pickup' && missionActive) {
+        loadFreight();
+      } else if (orderStage === 'delivery' && missionActive && cargoTruck === activeTruck) {
+        unloadFreight();
+      }
+    }
+
+    function startForklift(dock) {
+      if (!forkliftAssetReady) {
+        missionRespawnTimer = setTimeout(() => newOrder(), 1400);
+        return;
+      }
+
+      const side = dock.x >= 0 ? 1 : -1;
+      const start = { x: dock.x + 8 * side, z: dock.z + 10 };
+      const drop = { x: dock.x + 3 * side, z: dock.z + 4 };
+      const pickupApproach = { x: drop.x, z: drop.z + 3 };
+      const stack = { x: dock.stackX, z: dock.stackZ };
+      const stackApproach = { x: stack.x, z: stack.z - 3.2 };
+
+      forkliftRoot.visible = true;
+      forkliftRoot.position.set(start.x, 0, start.z);
+      forkliftRoot.rotation.y = Math.atan2(
+        -(pickupApproach.x - start.x),
+        -(pickupApproach.z - start.z)
+      );
+
+      if (forkliftForks) forkliftForks.position.y = forkliftForksBaseY;
+
+      forkliftCrate.visible = true;
+      forkliftCrate.position.set(drop.x, 0, drop.z);
+
+      forkliftState = {
+        dock,
+        t: 0,
+        start,
+        drop,
+        pickupApproach,
+        stack,
+        stackApproach,
+        placed: false
+      };
+    }
+
+    function addPlacedCrate(dock) {
+      const placed = forkliftCrate.clone(true);
+      placed.visible = true;
+      placed.position.set(dock.stackX, 1.4, dock.stackZ);
+      scene.add(placed);
+    }
+
+    function updateForklift(dt) {
+      if (!forkliftState) return;
+      const state = forkliftState;
+      state.t += dt;
+      const t = state.t;
+
+      const lerpPoint = (a, b, u) => ({
+        x: a.x + (b.x - a.x) * u,
+        z: a.z + (b.z - a.z) * u
+      });
+      const face = (dx, dz) => Math.atan2(-dx, -dz);
+
+      let position = state.pickupApproach;
+      let heading = 0;
+      let lift = 0;
+
+      if (t < 2.0) {
+        const u = Math.min(t / 2.0, 1);
+        position = lerpPoint(state.start, state.pickupApproach, u);
+        heading = face(
+          state.pickupApproach.x - state.start.x,
+          state.pickupApproach.z - state.start.z
+        );
+      } else if (t < 3.0) {
+        position = state.pickupApproach;
+        heading = 0;
+        lift = Math.min((t - 2.0), 1);
+      } else if (t < 5.2) {
+        const u = Math.min((t - 3.0) / 2.2, 1);
+        position = lerpPoint(state.pickupApproach, state.stackApproach, u);
+        heading = face(
+          state.stackApproach.x - state.pickupApproach.x,
+          state.stackApproach.z - state.pickupApproach.z
+        );
+        lift = 1;
+      } else if (t < 6.4) {
+        position = state.stackApproach;
+        heading = Math.PI;
+        lift = Math.max(0, 1 - (t - 5.2) / 1.0);
+      } else if (t < 7.6) {
+        position = state.stackApproach;
+        heading = Math.PI;
+        lift = 0;
+      } else {
+        forkliftRoot.visible = false;
+        forkliftCrate.visible = false;
+        forkliftState = null;
+        clearTimeout(missionRespawnTimer);
+        missionRespawnTimer = setTimeout(() => newOrder(), 700);
+        return;
+      }
+
+      forkliftRoot.position.set(position.x, 0, position.z);
+      forkliftRoot.rotation.y = heading;
+
+      if (forkliftForks) {
+        forkliftForks.position.y = forkliftForksBaseY + lift * 0.9;
+      }
+
+      const forwardX = -Math.sin(heading);
+      const forwardZ = -Math.cos(heading);
+
+      if (t < 3.0) {
+        forkliftCrate.position.set(state.drop.x, 0, state.drop.z);
+      } else if (t < 5.2) {
+        forkliftCrate.position.set(
+          position.x + forwardX * 2.4,
+          1.4,
+          position.z + forwardZ * 2.4
+        );
+      } else if (t < 6.4) {
+        const u = Math.min((t - 5.2) / 1.2, 1);
+        forkliftCrate.position.set(
+          position.x + forwardX * 2.4 * (1 - u) + state.stack.x * u,
+          1.4 + 0.6 * u,
+          position.z + forwardZ * 2.4 * (1 - u) + state.stack.z * u
+        );
+      } else {
+        if (!state.placed) {
+          state.placed = true;
+          addPlacedCrate(state.dock);
+          forkliftCrate.visible = false;
+        }
+      }
+    }
+
+    function newOrder() {
+      if (forkliftState) return;
+
+      orderSequence += 1;
+      orderId = makeOrderId();
+
+      currentWarehouseIndex = pickWarehouseIndex();
+      currentWarehouse = warehouseTargets[currentWarehouseIndex];
+      currentDock = docks[Math.floor(Math.random() * docks.length)];
+      if (!currentWarehouse || !currentDock) return;
+
+      cargoTruck = null;
+      if (cargoGroup.parent) cargoGroup.removeFromParent();
+      cargoGroup.visible = false;
+      forkliftCrate.visible = false;
+      forkliftRoot.visible = false;
+
+      orderStage = 'pickup';
+      missionActive = true;
+      missionTarget = currentWarehouse;
+      positionWarehouseMarker(currentWarehouse);
+      dockGroup.visible = false;
+      updateOrderHud();
+      hideFreightPrompt();
+      lastPathTargetKey = '';
+    }
+
+    newOrder();
 
     /* ------------------------------------------------------------------ */
     /*  Gas stations                                                       */
@@ -2308,12 +2745,6 @@
     );
 
     function updateGasStations(dt) {
-      if (warehousePanelOpen) {
-        refuelHud.classList.remove('show');
-        refuelTimer = 0;
-        return;
-      }
-
       if (!activeTruck) {
         refuelHud.classList.remove('show');
         refuelTimer = 0;
@@ -2601,6 +3032,7 @@
             }
           });
           group.add(model);
+          const truckBounds = new THREE.Box3().setFromObject(model);
           group.position.set(spawn.x, 0.02, spawn.z);
           group.rotation.y = spawn.heading;
 
@@ -2636,7 +3068,8 @@
             speed: 0,
             fuel: 100,
             driveTime: 0,
-            restTimer: 0
+            restTimer: 0,
+            cargoTopY: truckBounds.max.y + 0.03
           });
         }
 
@@ -2676,18 +3109,20 @@
     }
 
     function truckBlocked(x, z, heading) {
-      for (const offset of [-2.0, 0, 2.0]) {
+      // Slightly smaller probe than the full truck body so corners do not
+      // wedge the vehicle. The visual body may overlap a few centimeters.
+      for (const offset of [-1.7, 0, 1.7]) {
         const px = x - Math.sin(heading) * offset;
         const pz = z - Math.cos(heading) * offset;
-        if (pointBlocked(px, pz, 0.95)) return true;
+        if (pointBlocked(px, pz, 0.72)) return true;
       }
       return false;
     }
 
     // Oriented 2D boxes around the trucks. The model is 5.6 x 2.0 m;
     // half extents include a small safety margin.
-    const TRUCK_HALF_LENGTH = 2.9;
-    const TRUCK_HALF_WIDTH = 1.05;
+    const TRUCK_HALF_LENGTH = 2.75;
+    const TRUCK_HALF_WIDTH = 0.95;
 
     function obbOverlap(ax, az, ah, bx, bz, bh) {
       const afx = -Math.sin(ah);
@@ -2903,21 +3338,21 @@
       const throttle = (keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0);
       if (truck.fuel > 0) {
         if (throttle > 0) truck.speed += 5.4 * dt;
-        else if (throttle < 0) truck.speed -= 6.6 * dt;
+        else if (throttle < 0) truck.speed -= 7.5 * dt;
         else truck.speed *= Math.exp(-1.8 * dt);
       } else {
         truck.speed = 0;
       }
 
       if (throttle === 0 && Math.abs(truck.speed) < 0.02) truck.speed = 0;
-      truck.speed = THREE.MathUtils.clamp(truck.speed, -3.2, 8.0);
+      truck.speed = THREE.MathUtils.clamp(truck.speed, -5.5, 8.0);
 
       const steer = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0);
       const oldHeading = truck.heading;
       let nextHeading = oldHeading;
       if (Math.abs(truck.speed) > 0.05) {
         const speedFactor = Math.min(Math.abs(truck.speed) / 2, 1);
-        nextHeading += steer * 1.18 * dt * speedFactor * (truck.speed >= 0 ? 1 : -1);
+        nextHeading += steer * 2.05 * dt * speedFactor * (truck.speed >= 0 ? 1 : -1);
       }
 
       const forwardX = -Math.sin(nextHeading);
@@ -2930,11 +3365,27 @@
         nextX < WORLD.minX + margin || nextX > WORLD.maxX - margin ||
         nextZ < WORLD.minZ + margin || nextZ > WORLD.maxZ - margin;
 
-      if (outside ||
-          truckBlocked(nextX, nextZ, nextHeading) ||
-          hitsOtherTruck(nextX, nextZ, nextHeading, truck)) {
-        truck.speed = 0;
-        truck.heading = oldHeading;
+      const currentX = truck.group.position.x;
+      const currentZ = truck.group.position.z;
+      const blocked =
+        outside ||
+        truckBlocked(nextX, nextZ, nextHeading) ||
+        hitsOtherTruck(nextX, nextZ, nextHeading, truck);
+
+      if (blocked) {
+        // Soft collision: allow the truck to rotate in place if that is clear,
+        // and apply a small rebound instead of a hard stop. This prevents the
+        // common "wedged in a container/station corner" failure state.
+        const canTurnInPlace =
+          !outside &&
+          !truckBlocked(currentX, currentZ, nextHeading) &&
+          !hitsOtherTruck(currentX, currentZ, nextHeading, truck);
+
+        truck.heading = canTurnInPlace ? nextHeading : oldHeading;
+        const impact = Math.abs(truck.speed);
+        truck.speed = impact > 0.25
+          ? -Math.sign(truck.speed) * Math.min(impact * 0.16, 1.2)
+          : 0;
       } else {
         truck.heading = nextHeading;
         truck.group.position.x = nextX;
@@ -3150,20 +3601,25 @@
       return points;
     }
 
-    function getWarehouseNavGoal(target) {
-      return { x: target.accessX, z: target.z };
+    function getMissionNavGoal() {
+      if (orderStage === 'pickup' && currentWarehouse) {
+        return { x: currentWarehouse.accessX, z: currentWarehouse.z };
+      }
+      if (orderStage === 'delivery' && currentDock) {
+        return { x: currentDock.accessX, z: currentDock.accessZ };
+      }
+      return null;
     }
 
     let currentPath = [];
     let pathAccumulator = 0;
-    let lastPathTarget = -1;
     let lastPathX = 0;
     let lastPathZ = 0;
 
     function updateMinimapPath(dt) {
       if (!missionActive || !missionTarget) {
         currentPath = [];
-        lastPathTarget = -1;
+        lastPathTargetKey = '';
         return;
       }
 
@@ -3171,17 +3627,22 @@
       const pz = activeTruck ? activeTruck.group.position.z : camera.position.z;
       pathAccumulator += dt;
 
-      if (lastPathTarget === missionPointIndex &&
+      const key = `${orderId}:${orderStage}:${currentWarehouseIndex}:${currentDock ? currentDock.id : ''}`;
+      if (lastPathTargetKey === key &&
           Math.hypot(px - lastPathX, pz - lastPathZ) < 2) {
         return;
       }
       if (pathAccumulator < 0.4) return;
 
       pathAccumulator = 0;
-      lastPathTarget = missionPointIndex;
+      lastPathTargetKey = key;
       lastPathX = px;
       lastPathZ = pz;
-      const goal = getWarehouseNavGoal(missionTarget);
+      const goal = getMissionNavGoal();
+      if (!goal) {
+        currentPath = [];
+        return;
+      }
       currentPath = findNavPath(px, pz, goal.x, goal.z);
     }
 
@@ -3306,6 +3767,61 @@
       }
     }
 
+    function drawWarehouseIcon(ctx, x, y, active) {
+      ctx.save();
+      if (active) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.004);
+        ctx.beginPath();
+        ctx.arc(x, y, 9 + pulse * 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 190, 60, 0.16)';
+        ctx.fill();
+      }
+      ctx.fillStyle = '#b77a24';
+      ctx.fillRect(x - 7, y - 5, 14, 11);
+      ctx.fillStyle = '#ffcf4a';
+      ctx.beginPath();
+      ctx.moveTo(x - 8, y - 5);
+      ctx.lineTo(x, y - 11);
+      ctx.lineTo(x + 8, y - 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#3a270d';
+      ctx.fillRect(x - 2, y - 1, 4, 7);
+      ctx.strokeStyle = '#ffe6a3';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(x - 7, y - 5, 14, 11);
+      ctx.restore();
+    }
+
+    function drawDockIcon(ctx, x, y, active) {
+      ctx.save();
+      if (active) {
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() * 0.004);
+        ctx.beginPath();
+        ctx.arc(x, y, 9 + pulse * 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(79, 224, 194, 0.16)';
+        ctx.fill();
+      }
+      ctx.fillStyle = '#238779';
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#5fe6c4';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.strokeStyle = '#e1fff8';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 5);
+      ctx.lineTo(x, y + 5);
+      ctx.moveTo(x - 3, y - 2);
+      ctx.lineTo(x + 3, y - 2);
+      ctx.moveTo(x - 4, y + 2);
+      ctx.quadraticCurveTo(x, y + 7, x + 4, y + 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     function drawMinimap(time) {
       const ctx = minimapCtx;
       ctx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
@@ -3341,29 +3857,38 @@
 
       drawStationIcons(ctx);
 
-      if (missionActive && missionTarget) {
-        const tx = worldToMapX(missionTarget.x);
-        const ty = worldToMapY(missionTarget.z);
-        const pulse = 0.5 + 0.5 * Math.sin(time * 4.0);
+      if (currentWarehouse) {
+        drawWarehouseIcon(
+          ctx,
+          worldToMapX(currentWarehouse.x),
+          worldToMapY(currentWarehouse.z),
+          missionActive && orderStage === 'pickup'
+        );
+      }
 
-        ctx.beginPath();
-        ctx.arc(tx, ty, 8 + pulse * 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 207, 74, 0.16)';
-        ctx.fill();
+      if (currentDock) {
+        drawDockIcon(
+          ctx,
+          worldToMapX(currentDock.x),
+          worldToMapY(currentDock.z),
+          missionActive && orderStage === 'delivery'
+        );
+      }
 
-        ctx.save();
-        ctx.shadowColor = '#ffcf4a';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.arc(tx, ty, 4.8, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffcf4a';
-        ctx.fill();
-        ctx.restore();
-
-        ctx.beginPath();
-        ctx.arc(tx, ty, 2.2, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff3c4';
-        ctx.fill();
+      if (missionActive) {
+        const target = orderStage === 'pickup' ? currentWarehouse : currentDock;
+        if (target) {
+          const tx = worldToMapX(target.x);
+          const ty = worldToMapY(target.z);
+          const pulse = 0.5 + 0.5 * Math.sin(time * 4.0);
+          ctx.beginPath();
+          ctx.arc(tx, ty, 10 + pulse * 4, 0, Math.PI * 2);
+          ctx.strokeStyle = orderStage === 'pickup'
+            ? 'rgba(255, 207, 74, 0.65)'
+            : 'rgba(95, 230, 196, 0.7)';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
       }
 
       const playerX = activeTruck ? activeTruck.group.position.x : camera.position.x;
@@ -3416,6 +3941,12 @@
         targetStripeMat.opacity = 0.65 + targetPulse * 0.25;
       }
 
+      if (missionActive && orderStage === 'delivery') {
+        const dockPulse = 0.5 + 0.5 * Math.sin(elapsed * 3.4);
+        dockBeamMat.opacity = 0.1 + dockPulse * 0.06;
+        dockRingMat.opacity = 0.5 + dockPulse * 0.28;
+      }
+
       if (activeTruck) {
         updateActiveTruck(dt);
       } else {
@@ -3455,7 +3986,8 @@
         }
       }
 
-      updateWarehousePanel();
+      updateFreightPrompt();
+      updateForklift(dt);
       updateGasStations(dt);
 
       updateInteractPrompt();
@@ -3469,7 +4001,7 @@
 
       renderer.render(scene, camera);
 
-      if (++frames >= 2 && containerAssetReady && bulkAssetReady && truckAssetReady && stationAssetReady && !window.__ready) {
+      if (++frames >= 2 && containerAssetReady && bulkAssetReady && truckAssetReady && stationAssetReady && forkliftAssetReady && !window.__ready) {
         document.getElementById('loading').classList.add('hidden');
         window.__ready = true;
       }
