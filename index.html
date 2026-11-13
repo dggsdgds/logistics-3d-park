@@ -4349,9 +4349,7 @@
 
         const blobTexture = makeBlobShadowTexture();
         const spawns = [
-          { x: 2.2, z: 56, heading: 0 },
-          { x: -3.1, z: 30, heading: 0 },
-          { x: 3.1, z: 2, heading: Math.PI }
+          { x: 2.2, z: 56, heading: 0 }
         ];
 
         for (const spawn of spawns) {
@@ -5016,22 +5014,21 @@
     }
 
     function truckBlocked(x, z, heading) {
-      // Smaller probe than the visual truck body. This keeps the truck from
-      // catching invisible corners while still preventing it from driving
-      // through containers.
-      for (const offset of [-1.4, 0, 1.4]) {
+      // Compact probes keep the truck from catching invisible corners while
+      // still preventing it from driving through containers.
+      for (const offset of [-1.05, 0, 1.05]) {
         const px = x - Math.sin(heading) * offset;
         const pz = z - Math.cos(heading) * offset;
-        if (pointBlocked(px, pz, 0.55)) return true;
+        if (pointBlocked(px, pz, 0.42)) return true;
       }
       return false;
     }
 
     // Oriented 2D boxes around the trucks. The model is 5.6 x 2.0 m;
-    // use a slightly smaller collision box than the visual body so the
-    // truck does not snag on painted lines or adjacent corners.
-    const TRUCK_HALF_LENGTH = 2.35;
-    const TRUCK_HALF_WIDTH = 0.78;
+    // use a deliberately compact collision box so the truck can pass close
+    // to containers and other vehicles without snagging.
+    const TRUCK_HALF_LENGTH = 1.95;
+    const TRUCK_HALF_WIDTH = 0.62;
 
     function obbOverlap(ax, az, ah, bx, bz, bh) {
       const afx = -Math.sin(ah);
@@ -5343,17 +5340,17 @@
       const forwardZ = -Math.cos(nextHeading);
       const nextX = forklift.group.position.x + forwardX * forklift.speed * dt;
       const nextZ = forklift.group.position.z + forwardZ * forklift.speed * dt;
-      const frontX = nextX + forwardX * 0.9;
-      const frontZ = nextZ + forwardZ * 0.9;
+      const frontX = nextX + forwardX * 0.72;
+      const frontZ = nextZ + forwardZ * 0.72;
 
       const outside =
         nextX < WORLD.minX + 2 || nextX > WORLD.maxX - 2 ||
         nextZ < WORLD.minZ + 2 || nextZ > WORLD.maxZ - 2;
 
       if (outside ||
-          pointBlocked(nextX, nextZ, 0.62) ||
-          pointBlocked(frontX, frontZ, 0.5) ||
-          pointInTruck(nextX, nextZ, 0.35)) {
+          pointBlocked(nextX, nextZ, 0.45) ||
+          pointBlocked(frontX, frontZ, 0.34) ||
+          pointInTruck(nextX, nextZ, 0.22)) {
         forklift.speed *= -0.12;
       } else {
         forklift.group.position.x = nextX;
