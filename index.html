@@ -5016,19 +5016,19 @@
     function truckBlocked(x, z, heading) {
       // Compact probes keep the truck from catching invisible corners while
       // still preventing it from driving through containers.
-      for (const offset of [-1.05, 0, 1.05]) {
+      for (const offset of [-1.35, 0, 1.35]) {
         const px = x - Math.sin(heading) * offset;
         const pz = z - Math.cos(heading) * offset;
-        if (pointBlocked(px, pz, 0.42)) return true;
+        if (pointBlocked(px, pz, 0.48)) return true;
       }
       return false;
     }
 
-    // Oriented 2D boxes around the trucks. The model is 5.6 x 2.0 m;
-    // use a deliberately compact collision box so the truck can pass close
-    // to containers and other vehicles without snagging.
-    const TRUCK_HALF_LENGTH = 1.95;
-    const TRUCK_HALF_WIDTH = 0.62;
+    // Oriented 2D boxes around the trucks. The model is 5.6 x 2.0 m.
+    // Keep the collision generous enough that vehicles cannot pass through
+    // each other, while still smaller than the visual body.
+    const TRUCK_HALF_LENGTH = 2.2;
+    const TRUCK_HALF_WIDTH = 0.82;
 
     function obbOverlap(ax, az, ah, bx, bz, bh) {
       const afx = -Math.sin(ah);
@@ -5090,6 +5090,21 @@
         }
       }
       return false;
+    }
+
+    function truckHitsForklift(x, z, heading) {
+      if (!drivableForklift.ready || !drivableForklift.group) return false;
+      const dx = drivableForklift.group.position.x - x;
+      const dz = drivableForklift.group.position.z - z;
+      const fx = -Math.sin(heading);
+      const fz = -Math.cos(heading);
+      const rx = Math.cos(heading);
+      const rz = -Math.sin(heading);
+      const localForward = dx * fx + dz * fz;
+      const localRight = dx * rx + dz * rz;
+      const forkliftRadius = 1.15;
+      return Math.abs(localForward) < TRUCK_HALF_LENGTH + forkliftRadius &&
+             Math.abs(localRight) < TRUCK_HALF_WIDTH + forkliftRadius;
     }
 
     function setPromptMode(mode) {
@@ -5340,17 +5355,17 @@
       const forwardZ = -Math.cos(nextHeading);
       const nextX = forklift.group.position.x + forwardX * forklift.speed * dt;
       const nextZ = forklift.group.position.z + forwardZ * forklift.speed * dt;
-      const frontX = nextX + forwardX * 0.72;
-      const frontZ = nextZ + forwardZ * 0.72;
+      const frontX = nextX + forwardX * 0.82;
+      const frontZ = nextZ + forwardZ * 0.82;
 
       const outside =
         nextX < WORLD.minX + 2 || nextX > WORLD.maxX - 2 ||
         nextZ < WORLD.minZ + 2 || nextZ > WORLD.maxZ - 2;
 
       if (outside ||
-          pointBlocked(nextX, nextZ, 0.45) ||
-          pointBlocked(frontX, frontZ, 0.34) ||
-          pointInTruck(nextX, nextZ, 0.22)) {
+          pointBlocked(nextX, nextZ, 0.58) ||
+          pointBlocked(frontX, frontZ, 0.45) ||
+          pointInTruck(nextX, nextZ, 0.42)) {
         forklift.speed *= -0.12;
       } else {
         forklift.group.position.x = nextX;
@@ -5493,7 +5508,8 @@
       const blocked =
         outside ||
         truckBlocked(nextX, nextZ, nextHeading) ||
-        hitsOtherTruck(nextX, nextZ, nextHeading, truck);
+        hitsOtherTruck(nextX, nextZ, nextHeading, truck) ||
+        truckHitsForklift(nextX, nextZ, nextHeading);
 
       if (blocked) {
         // Soft collision: allow the truck to rotate in place if that is clear,
@@ -5502,7 +5518,8 @@
         const canTurnInPlace =
           !outside &&
           !truckBlocked(currentX, currentZ, nextHeading) &&
-          !hitsOtherTruck(currentX, currentZ, nextHeading, truck);
+          !hitsOtherTruck(currentX, currentZ, nextHeading, truck) &&
+          !truckHitsForklift(currentX, currentZ, nextHeading);
 
         truck.heading = canTurnInPlace ? nextHeading : oldHeading;
         const impact = Math.abs(truck.speed);
